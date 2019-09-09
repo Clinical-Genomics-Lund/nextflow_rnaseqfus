@@ -96,6 +96,6 @@ process jaffa{
     
     script:
     """
-    bpipe run JAFFA_direct.groovy ${reads[0]} ${reads[1]}
+    bpipe run $JAFFA_HOME/direct.groovy ${reads[0]} ${reads[1]}
     """
 }
