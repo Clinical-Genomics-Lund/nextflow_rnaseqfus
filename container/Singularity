@@ -1,0 +1,28 @@
+Bootstrap:docker
+From:nfcore/base
+
+%labels
+	MAINTAINER Björn Hallström <bjorn.hallstrom@skane.se>
+	DESCRIPTION Singularity container for CMD WGS pipeline
+	VERSION 0.0.1
+
+%environment
+	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:$PATH
+
+%files
+        environment.yml /
+
+%post
+	
+	rm -rf /var/lib/apt/lists/*
+	apt -y clean
+	apt-get install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdkpt -y update
+	mkdir /opt/fusioncatcher
+	cd /opt/fusioncatcher
+
+	wget http://sf.net/projects/fusioncatcher/files/bootstrap.py -O bootstrap.py && python bootstrap.py -t 
+	
+	
+	
+	/opt/conda/bin/conda env create -f /environment.yml
+	/opt/conda/bin/conda clean -a

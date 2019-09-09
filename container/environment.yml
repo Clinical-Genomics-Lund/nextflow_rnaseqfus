@@ -1,0 +1,11 @@
+name: CMD-RNASEQFUS
+channels:
+    - bioconda
+    - conda-forge
+    - defaults
+
+dependencies:
+    - bioconda::bedtools=2.28.0
+    - bioconda::fusioncatcher=1.00
+    - bioconda::star-fusion
+    
