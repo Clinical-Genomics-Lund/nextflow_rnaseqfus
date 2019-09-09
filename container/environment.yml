@@ -6,6 +6,7 @@ channels:
 
 dependencies:
     - bioconda::bedtools=2.28.0
-    - bioconda::fusioncatcher=1.00
-    - bioconda::star-fusion
-    
+    #- bioconda::fusioncatcher=1.00
+    - bioconda::star-fusion=1.7.0
+    - bioconda::star=2.7.2b
+    - bioconda::jaffa=1.09   
