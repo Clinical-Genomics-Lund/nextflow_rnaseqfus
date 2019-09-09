@@ -2,9 +2,9 @@
 //This pipeline contains Starfusion and fusioncatcher tools. 
 
 
-params.fusionCatcher_ref= "/data/bnf/dev/sima/rnaseq-fusion/data/fusioncatcher/human_v95"
-params.star_fusion_ref = "/data/bnf/dev/sima/rnaseq-fusion/data/starFusion/ctat_genome_lib_build_dir"
-params.outdir = "/data/bnf/dev/sima/rnaseq-fusion/results"
+params.fusionCatcher_ref= "/data/bnf/dev/sima/rnaSeq_fus/data/fusioncatcher/human_v95"
+params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_genome_lib_build_dir"
+params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
 params.name = false
 params.singleEnd= false
 
