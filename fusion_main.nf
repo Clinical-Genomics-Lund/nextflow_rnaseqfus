@@ -13,7 +13,7 @@ params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/
 Channel
         .fromFilePairs( params.reads )
         .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
-        .into {read_files_star_fusion; read_files_fusioncatcher }
+        .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa }
 
 
 star_fusion_ref = Channel
@@ -85,3 +85,17 @@ process fusioncatcher {
     """
 }
 
+process jaffa{
+    publishDir  "${params.outdir}/tools/jaffa", mode: 'copy'
+
+    input:
+    set val(name), file(reads) from  read_files_jaffa
+    
+    output:
+    file '*.{fasta,csv}' into jaffa_output
+    
+    script:
+    """
+    bpipe run JAFFA_direct.groovy ${reads[0]} ${reads[1]}
+    """
+}

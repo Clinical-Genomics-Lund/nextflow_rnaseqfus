@@ -8,6 +8,7 @@ From:nfcore/base
 
 %environment
 	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:$PATH
+	export JAFFA_HOME=/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 
 %files
         environment.yml /
