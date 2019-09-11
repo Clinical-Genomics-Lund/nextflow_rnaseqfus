@@ -2,13 +2,13 @@ Bootstrap:docker
 From:nfcore/base
 
 %labels
-	MAINTAINER Björn Hallström <bjorn.hallstrom@skane.se>
-	DESCRIPTION Singularity container for CMD WGS pipeline
-	VERSION 0.0.1
+	MAINTAINER Sima Rahimi <sima.rahimi@skane.se>
+	DESCRIPTION Singularity container for CMD RNS-seq fusion genes pipeline
+	
 
 %environment
 	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:$PATH
-	export JAFFA_PATH=/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	export JAFFA=/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 
 %files
         environment.yml /
@@ -20,16 +20,21 @@ From:nfcore/base
 	apt -y update
         apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
 	
+
+
+	
 	mkdir /opt/fusioncatcher
 	cd /opt/fusioncatcher 
 	wget http://sf.net/projects/fusioncatcher/files/bootstrap.py -O bootstrap.py && python bootstrap.py -t -y
-		
-	wget https://s3-eu-west-1.amazonaws.com/pfigshare-u-files/16780934/JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
-	tar -xvzf JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
-
-	wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz
-	gunzip hg38.fa.gz
+	
 
 	/opt/conda/bin/conda env create -f /environment.yml
-	/opt/conda/bin/conda clean -a
+	/opt/conda/bin/conda clean -a	
+	cp /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	cd /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	wget https://s3-eu-west-1.amazonaws.com/pfigshare-u-files/16780934/JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
+	tar -xvzf JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
+	ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg19.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	
+	
 	
