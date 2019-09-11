@@ -34,7 +34,7 @@ From:nfcore/base
 	cd /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 	wget https://s3-eu-west-1.amazonaws.com/pfigshare-u-files/16780934/JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
 	tar -xvzf JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
-	ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg19.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 	
 	
 	
