@@ -2,7 +2,7 @@
 //This pipeline contains Starfusion and fusioncatcher tools. 
 
 
-//JAFFA= "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1"
+
 jaffa_file = file("/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/JAFFA_direct.groovy")
 params.fusionCatcher_ref= "/data/bnf/dev/sima/rnaSeq_fus/data/fusioncatcher/human_v95"
 params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_genome_lib_build_dir"
@@ -98,6 +98,6 @@ process jaffa{
     
     script:
     """
-    bpipe run -p  genome=hg38 -p refBase="/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/"  $jaffa_file  ${reads[0]} ${reads[1]} 
+    bpipe run -p  genome=hg38 -p refBase="/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/"  $jaffa_file  ${reads[0]} ${reads[1]}  
     """
 }

@@ -1,1 +1,0 @@
-sudo singularity build <name.sif> path/to/Singularity 
