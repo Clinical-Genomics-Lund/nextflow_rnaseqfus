@@ -1,12 +1,14 @@
 Counts_of_mapping_reads	Virus/Bacteria/Phage
-     11 NC_029853.1_Mus_musculus_mobilized_endogenous_polytropic_provirus_clone_15_truncated_gag-pol_polyprotein_(gag)_and_envelope_protein_(env)_genes,_complete_cds
+     10 NC_029853.1_Mus_musculus_mobilized_endogenous_polytropic_provirus_clone_15_truncated_gag-pol_polyprotein_(gag)_and_envelope_protein_(env)_genes,_complete_cds
      10 NC_001479.1_Encephalomyocarditis_virus,_complete_genome
-      3 NC_027385.1_Propionibacterium_phage_PHL092M00,_complete_genome
+      2 NC_027385.1_Propionibacterium_phage_PHL092M00,_complete_genome
       1 NC_028821.1_Staphylococcus_phage_StB20-like,_complete_genome
       1 NC_028694.1_Propionibacterium_phage_PA1-14,_complete_genome
+      1 NC_027629.1_Propionibacterium_phage_Attacne,_complete_genome
+      1 NC_027623.1_Propionibacterium_phage_Pirate,_complete_genome
       1 NC_027371.1_Propionibacterium_phage_Pacnes_2012-15,_complete_genome
-      1 NC_027354.1_Propionibacterium_phage_PHL301M00,_complete_genome
-      1 NC_022338.1_Propionibacterium_phage_PHL060L00,_complete_genome
       1 NC_019915.1_Staphylococcus_phage_StB20,_complete_genome
       1 NC_018851.1_Propionibacterium_phage_ATCC29399B_C,_complete_genome
-      1 NC_018847.1_Propionibacterium_phage_ATCC29399B_T,_complete_genome
+      1 NC_018849.1_Propionibacterium_phage_P105,_complete_genome
+      1 NC_018839.1_Propionibacterium_phage_P14.4,_complete_genome
+      1 NC_001702.1_Murine_type_C_retrovirus,_complete_genome

@@ -9,6 +9,8 @@ params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_gen
 params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
 params.name = false
 params.singleEnd= false
+params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa"
+params.genome_gtf = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/gencode.v31.chr_patch_hapl_scaff.annotation.gtf"
 
 params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R{1,2}_001.fastq.gz"
 
@@ -25,6 +27,39 @@ star_fusion_ref = Channel
 fusionCatcher_ref = Channel
 				.fromPath(params.fusionCatcher_ref)
 				.ifEmpty { exit 1, "Fusioncatcher reference directory not found!" }
+
+genome_fasta = Channel.fromPath(params.genome_fasta)
+genome_gtf = Channel.fromPath(params.genome_gtf)
+
+
+/* Buid STAR index */
+
+
+process build_star_index {
+	
+	publishDir "${params.outdir}/star_index", mode:'copy'
+	cpu = 4
+
+	input :
+	file genome_fasta
+	file genome_gtf
+
+	output:
+	file "genome_index" into star_index
+	
+	script:
+	"""
+	mkdir genome_index
+	STAR \\
+	--runMode genomeGenerate \\
+	--runThreadN ${task.cpu}\\
+	--sjdbGTFfile ${genome_gtf} \\
+	--genomeDir genome_index/ \\
+	--genomeFastaFiles ${genome_fasta} 
+	"""	
+	}
+
+
 
 
 process star_fusion{
@@ -64,8 +99,7 @@ process fusioncatcher {
     cpus 4  
     publishDir "${params.outdir}/tools/Fusioncatcher", mode: 'copy'
 
-    //when:
-    params.fusioncatcher || (params.fusioncatcher && params.debug)
+    //when: params.fusioncatcher || (params.fusioncatcher && params.debug)
 
     input:
     set val(name), file(reads) from read_files_fusioncatcher
