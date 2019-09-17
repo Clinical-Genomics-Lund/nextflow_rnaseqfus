@@ -10,3 +10,7 @@ dependencies:
     - bioconda::star-fusion=1.7.0
     - bioconda::star=2.7.2b
     - bioconda::jaffa=1.09   
+    - bioconda::salmon=0.14.1
+    - bioconda::fastq-screen=0.13.0
+    - bioconda::qualimap=2.2.2c
+ 
