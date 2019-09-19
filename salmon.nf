@@ -22,16 +22,33 @@ ref_file_salmon = Channel
 	.ifEmpty { exit 1, "Star-Fusion reference directory not found!" }	
 
 process create_refIndex{
+	cpus = 8
 	publishDir "${params.outdir}/tools/salmon", mode:'copy'
 	input:
 	file ref from ref_file_salmon 
         file decoys from decoys_file              
 
 	output:
-	file 'ref_index' into ref_index_file_salmon
+	file 'ref_index' into ref_index_ch
 
 	script:
 	"""
 	salmon  index  --threads 8  -t $ref -d $decoys -i ref_index
 	"""  
 	}
+process quant{
+	tag "$sample_id"
+	publishDir "${params.outdir}/tools/salmon/transcripts_quant/$sample_id", mode:'copy'
+	cpus = 8
+	input:
+	set val(sample_id), file (reads) from read_files_salmon
+	file (index) from ref_index_ch	
+
+	output:
+	file  'transcripts_quant'  into transcripts_quant_ch
+	script:
+	"""
+	salmon quant --threads $task.cpus -i $index -l A -1 ${reads[0]} -2 ${reads[1]} --validateMappings -o transcripts_quant
+	"""
+
+}
