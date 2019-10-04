@@ -1,0 +1,163 @@
+---
+title: ''
+params:
+  sampleid: 's_95_S14'
+  quant_in: '/data/bnf/premap/rnaseq/4261_00_0.rsem'
+  out_json: '/data/bnf/premap/rnaseq/536_00_0.rsem_dev.out'
+  quantmethod: 'rsem'
+  classifier_file: '/data/bnf/ref/fusion_classifier/hem_classifier.salmon.20190510.RData'
+output:
+  html_document: default
+
+---
+
+
+```{r setup, include=FALSE}
+
+
+
+library("ggplot2")
+library("cowplot")
+library("reshape")
+library("knitr")
+library("kableExtra")
+library("RColorBrewer")
+library("dplyr")
+library("jsonlite")
+
+
+
+
+
+options(digits=2)
+
+options(stringsAsFactors = F)
+
+colorPal <- c("#7BC0F7", "#3B8AD9", "#F18226", "#FFDB69", "#61737B", "#A6B3B3", "#E24B26", brewer.pal(name = "Set1",9))
+
+knitr::opts_chunk$set(echo = TRUE)
+
+
+# Load classifier
+
+load(params$classifier_file)
+
+
+##### read the GEX data for one sample #####
+#quant_file<-"/data/bnf/premap/rnaseq/6273_16_0.rsem"
+quant_file <- params$quant_in
+
+if (!file.exists(quant_file)){
+  exit("In file not found")
+}
+
+quant <- read.table(quant_file, header = T, row.names = 1)
+
+if(params$quantmethod == "salmon"){
+  quant$ensembl_transcript_id <- rownames(quant)
+  load("/data/bnf/ref/fusion_classifier/ensembl_annotation.RData")
+  quant <- merge(quant,result,by="ensembl_transcript_id")
+  sample <- quant$TPM
+  symbol <- quant$hgnc_symbol
+}else{
+  symbol <- sapply(strsplit(rownames(quant),"_"), "[[", 2)
+  sample<- quant$TPM
+}
+
+#symbol <- gsub("-","_",symbol)
+names(sample)<-symbol
+sample <- as.matrix(sample)
+
+# function to remove the rules from SwitchBox classifier when the genes that involved in the rules are not in the sample
+keep_rules <- function(SampleData, classifier){
+  # each rule has two genes, both of them should be in the sample data
+  # otherwise this rule will be remove to avoid any errors
+  sum  <- classifier$TSPs[,1] %in% rownames(SampleData) + classifier$TSPs[,2] %in% rownames(SampleData)
+  
+  # subset the classifier's rules
+  classifier$name  <- paste0("TSPs", sum(sum==2))
+  classifier$score <- classifier$score[sum==2]
+  classifier$TSPs  <- classifier$TSPs[sum==2,]
+  return(classifier)
+}
+
+
+
+# classify new samples
+sample_score <- function(data, classifier){
+  
+  classifier <-  keep_rules(data,classifier)
+  trues <- data[classifier$TSPs[,1],]  > data[classifier$TSPs[,2],]
+ # print(paste0("# of true rules:", sum(trues)))
+  score <- sum(classifier$score[trues])/sum(classifier$score)
+  return(c(score,sum(trues),length(classifier$score)))
+}
+
+```
+
+## Analysrapport - Expressionsdriven klassificering av hematologiska maligniteter - `r params$sampleid`
+
+|  
+------------- | -------------
+Patientnamn | NA NA
+Personnummer | 19XXXXX-XX
+Prov-ID | `r params$sampleid`
+Provtyp | 
+Rapportdatum | `r date()`
+Analysmetod | NGS-/MPS-analys med RNA-seq
+Rapport-ID | `r params$sampleid`.1
+Expressionsdata | `r params$quant_in`
+
+### Slutsats
+
+```{r results_classifier, include=T,echo=F,fig.width=6,fig.height=6}
+
+results <- data.frame(matrix(NA, nrow = length(seq(1)), 
+                             ncol = length(seq(1:4))))
+colnames(results)<-c("classifier", "score", "true_genes","total_genes")
+
+# scores for main MI subtypes
+
+
+results<-rbind(results,c("BA+BA-like",sample_score(sample,ba.classifier)))
+results<-rbind(results,c("HeH",sample_score(sample,heh.classifier)))
+results<-rbind(results,c("DUX4-high",sample_score(sample,dux4.classifier)))
+results<-rbind(results,c("ETV6-RUNX1",sample_score(sample,ER.classifier)))
+results<-rbind(results,c("MLL",sample_score(sample,MLL.classifier)))
+results<-rbind(results,c("Nonspecific",sample_score(sample,normal.classifier)))
+results<-rbind(results,c("Other",sample_score(sample,other.classifier)))
+results<-rbind(results,c("TCF3-PBX1",sample_score(sample,tcf3.classifier)))
+
+
+
+results <- results[-1,]
+colnames(results)<-c("Klass","Poäng", "Sanna", "Totalt")
+results$Poäng<-as.numeric(results$Poäng)
+results<-results[order(results$Poäng,decreasing = T),]
+
+```
+
+```{r,echo=F}
+cat(paste0("Expressionsprofilen tyder på att tumören är av typ ",results[1,"Klass"], " med starkt stöd (",prettyNum(as.numeric(results[1,"Poäng"]),digits=3),")."))
+```
+
+### Analysresultat
+
+
+```{r results_classifier_table, include=T,echo=F,fig.width=8,fig.height=8}
+
+results$Poäng<-as.numeric(results$Poäng)
+results$Sanna<-as.numeric(results$Sanna)
+results$Totalt<-as.numeric(results$Totalt)
+
+results_for_json <- results
+colnames(results_for_json)<-c("class","score","true","total")
+
+results_for_json.list<-list(classifier_results=results_for_json,classifier_version="HEM_1.01")
+
+write(toJSON(results_for_json.list,pretty = T,auto_unbox=T),file = params$out_json)
+kable(results,row.names = F) 
+
+
+
+```

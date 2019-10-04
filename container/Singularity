@@ -7,19 +7,24 @@ From:nfcore/base
 	
 
 %environment
-	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:$PATH
-	export JAFFA=/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:/opt/bin:$PATH
+	export JAFFA=/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/JAFFA_direct.groovy
+	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-WGS/lib/site_perl/5.26.2/
+	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-WGS/lib/site_perl/5.26.2/x86_64-linux-thread-multi/
+	export PERL5LIB=$PERL5LIB:/opt/bin/
+
 
 %files
         environment.yml /
-
+	../bin/ /opt
+	../bin/ /
 %post
 	
 	rm -rf /var/lib/apt/lists/*
 	apt -y clean
 	apt -y update
         apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
-	
+	apt-get install -y libopenblas-dev r-base-core libcurl4-openssl-dev libopenmpi-dev openmpi-bin openmpi-common openmpi-doc 
 
 
 	
@@ -29,12 +34,30 @@ From:nfcore/base
 	
 
 	/opt/conda/bin/conda env create -f /environment.yml
-	/opt/conda/bin/conda clean -a	
-	cp /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
-	cd /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	/opt/conda/bin/conda clean -a
+
+
+	#Install R packages
+	Rscript -e 'install.packages("optparse", repos="https://cloud.r-project.org/")'
+	Rscript -e 'install.packages("jsonlite", repos="https://cloud.r-project.org/")'
+        Rscript -e 'install.packages("ggplot2", repos="https://cloud.r-project.org/")'
+        Rscript -e 'install.packages("knitr", repos="https://cloud.r-project.org/")'
+        Rscript -e 'install.packages("kableExtra", repos="https://cloud.r-project.org/")'
+        Rscript -e 'install.packages("RColorBrewer", repos="https://cloud.r-project.org/")'
+        Rscript -e 'install.packages("dplyr", repos="https://cloud.r-project.org/")'
+        Rscript -e 'install.packages("reshape", repos="https://cloud.r-project.org/")'
+        Rscript -e 'install.packages("cowplot", repos="https://cloud.r-project.org/")'
+	Rscript -e 'install.packages("rmarkdown", repos="https://cloud.r-project.org/")'
+
+
+	ln /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	#cd /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 	wget https://s3-eu-west-1.amazonaws.com/pfigshare-u-files/16780934/JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
 	tar -xvzf JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
 	ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/trimmomatic-0.39-1/trimmomatic.jar /usr/share/java/trimmomatic.jar
+	#ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/*hg38* /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	#ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/known_fusions.txt  /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
+	#ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/gencode.v31.chr_patch_hapl_scaff.annotation.gtf  /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 	
 	

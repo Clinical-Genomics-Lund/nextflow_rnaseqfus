@@ -269,8 +269,9 @@ process rseqc_genebody_coverage {
 	file (ref_bed) from  ref_RseQC_ch
 	file (bam_f) from star_sort_bam_1
 	output:
-	file '*.pdf' into gene_bodyCov_ch
+	//file '*.pdf' into gene_bodyCov_ch
 	file '*' into bodyCov_output_ch
+	file '*geneBodyCoverage.txt' into gene_bodyCov_ch
 	script:
 	"""
 	geneBody_coverage.py -i ${bam_f} -r ${ref_bed} -o output
@@ -361,7 +362,7 @@ process fusioncatcher {
         -d ${data_dir} \\
         -i ${option} \\
         --threads ${task.cpus} \\
-        -o . \\
+        -o . 
     """
 }
 
@@ -369,7 +370,7 @@ process fusioncatcher {
 // /data/bnf/scripts/filter_aml_fusions.pl /data/bnf/premap/rnaseq/6192-11_0.fusioncatcher.folder > /data/bnf/premap/rnaseq/6192-11_0.fusioncatcher.xls
 
 process jaffa {
-	//errorStrategy 'ignore'
+	errorStrategy 'ignore'
     tag "$name"
     publishDir  "${params.outdir}/${name}/fusion/jaffa", mode: 'copy'
 
@@ -383,7 +384,7 @@ process jaffa {
     
     script:
     """
-    bpipe run -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38"  $jaffa_file  ${reads[0]} ${reads[1]}  
+    bpipe run -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  $jaffa_file  ${reads[0]} ${reads[1]}  
     """
 }
 
@@ -420,6 +421,7 @@ process quant{
 	output:
 	file  'quant'  into transcripts_quant_ch
 	file 'quant/libParams/flenDist.txt' into flendist_ch
+	file 'quant/quant.sf' into quant_ch
 	script:
 	"""
 	salmon quant --threads $task.cpus -i $index -l A -1 ${reads[0]} -2 ${reads[1]} --validateMappings -o 'quant'
@@ -454,10 +456,15 @@ process postaln_qc_rna{
 } 
 
 /* Register to CMD */
-///data/bnf/scripts/register_sample.pl --run-folder /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY --sample-id 6192-11 
-//--assay rnaseq-fusion --qc  /data/bnf/postmap/rnaseq/6192-11.STAR.rnaseq_QC
+///data/bnf/scripts/register_sample.pl --run-folder /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY --sample-id 6192-11 --assay rnaseq-fusion --qc  /data/bnf/postmap/rnaseq/6192-11.STAR.rnaseq_QC
 
-/* Create fusion report */
+/* Create fusion report 
+process fusion_report{
 
+	script:
+	""""
+	Rscript -e "rmarkdown::render('/data/bnf/scripts/fusion_classifier_report.Rmd',params=list(sampleid='$smpl_id', quant_in=${quant_ch},out_json='STAR.fusionreport',quantmethod='salmon'),output_file='/data/bnf/postmap/rnaseq/6192-11.STAR.fusionreport.html')"
+}
+*/
 /* Prepare and upload to Coyote */
 
