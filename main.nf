@@ -2,11 +2,12 @@
 
 /* Input files */ 
 params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
-params.reads = "/data/NextSeq1/190829_NB501697_0156_AH35YWBGXC/Data/Intensities/BaseCalls/ALL354A187_122-60853_S41_R{1,2}_001.fastq.gz" //fastq files
-smpl_id = 'ALL354A187_122-60853_S41_R'
+params.reads = "/data/NextSeq1/190829_NB501697_0156_AH35YWBGXC/Data/Intensities/BaseCalls/ALL354A189_122-60853_S43_R{1,2}_001.fastq.gz"
+smpl_id = 'ALL354A189_122-60853_S43_R'
 
-//params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa" //genome fasta file (used by STAR)
-//params.genome_gtf = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/gencode.v31.chr_patch_hapl_scaff.annotation.gtf" //Annotation file(used by STAR,qualimap)
+
+//params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa" //genome fasta file (Not using this file)
+//params.genome_gtf = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/gencode.v31.chr_patch_hapl_scaff.annotation.gtf" //Annotation file(not using this file)
 
 params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa" //fasta file from ensembl
 params.genome_gtf = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/gtf/Homo_sapiens.GRCh38.98.gtf" //fasta file from ensembl
@@ -17,7 +18,7 @@ params.genome_conf = "/data/bnf/dev/sima/rnaSeq_fus/data/fastqScreen/FastQ_Scree
 
 params.fusionCatcher_ref= "/data/bnf/dev/sima/rnaSeq_fus/data/fusioncatcher/human_v95"
 params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_genome_lib_build_dir"
-/* Jaffa ref files have to be in the same directory where the binary has been installed, so it is downloaded in the container. */
+/* Jaffa ref files have to be in the same directory where the binary has been installed, so it is downloaded in the container or the path has to be specified. */
 
 
 // Quantificatin files
@@ -27,19 +28,14 @@ params.ref_salmon = "/data/bnf/dev/sima/rnaSeq_fus/data/salmon/gentrome.fa" //ha
 //Provider  files
 params.ref_bed = "/data/bnf/sw/provider/HPA_1000G_final_38.bed"
 params.ref_bedXy= "/data/bnf/sw/provider/xy_38.bed"
-//params.provIder = file("/data/bnf/sw/provider/provider.pl")
+//BodyCov
+//params.ref_rseqc_bed ="/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/hg38_RefSeq_new.bed" //cat hg38_RefSeq.bed| sed 's/^chr//' > hg38_RefSeq_new.bed (nochr)
+//params.ref_rseqc_bed= "/data/bnf/ref/b37/b37_RefSeq.bed"
+//params.ref_rseqc_bed= "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/hg38.HouseKeepingGenes.nochr.bed"
+params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.bed"
 
-
-//params.star = "/data/bnf/tmp/rnaseq/6192-11_0.sort.bam.folder/Log.final.out"
-//params.fusion="/data/bnf/premap/rnaseq/6192-11_0.fusioncatcher/final-list_candidate-fusion-genes.hg19.txt"
-//params.gencov = "/data/bnf/postmap/rnaseq/6192-11.STAR.genebodycov.geneBodyCoverage.txt"
-//params.prov_geno = "/data/bnf/dev/sima/test/test2/proveider_output.genotypes"
-params.r=file("/data/bnf/scripts/postaln_qc_rna.R")
-//params.bam = "/data/bnf/dev/sima/rnaSeq_fus/results/tools/star/ALL354A187_122-60853_S41_R/ALL354A187_122-60853_S41_RAligned.sortedByCoord.out.bam"
-params.ref_rseqc_bed ="/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/hg38_RefSeq.bed"
-//params.config = "/data/bnf/dev/sima/test/fa_screen/FastQ_Screen_Genomes/fastq_screen.conf"
 jaffa_file = file("/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/JAFFA_direct.groovy")
-
+fusion_report_file = file("/data/bnf/dev/sima/rnaSeq_fus/bin/fusion_classifier_report.Rmd")
 
 /* Set running tool falgs */
 /* QC tools */
@@ -49,9 +45,9 @@ params.star = true
 params.fastqscreen = false
 params.fastqscreen_genomes = true //This flag shows that the if config file for fastqscreen already exists.  
 params.qualimap = false
-params.bodyCov = false
+params.bodyCov = true
 params.provider =false
-params.combine = true
+params.combine = false
 
 /* Fusion identification tools */
 params.fusion = true
@@ -90,11 +86,6 @@ ref_RseQC_ch= Channel.fromPath(params.ref_rseqc_bed)
 bed_ch= Channel.fromPath(params.ref_bed)
 bedXy_ch =Channel.fromPath(params.ref_bedXy)
 
-//star_final_ch = Channel.fromPath(params.star) 
-//final_fus_ch = Channel.fromPath(params.fusion)
-//bodyCov_ch = Channel.fromPath(params.gencov)
-//prov_ch = Channel.fromPath(params.prov_geno)
-
 
 star_fusion_ref = Channel
             .fromPath(params.star_fusion_ref)
@@ -105,17 +96,12 @@ fusionCatcher_ref = Channel
 			.ifEmpty { exit 1, "Fusioncatcher reference directory not found!" }
 
 
-
-//genome_star_index_dir = Channel.fromPath(params.genome_star_index_dir)
-
 ref_file_salmon = Channel 
 			.fromPath(params.ref_salmon)
 			.ifEmpty { exit 1, " Reference file/directory not found!" }
 
 
 /* Part1: QC */
-
-
 process build_star_index {
 
 	publishDir "${params.outdir}/star_refGenome_index", mode:'copy'
@@ -262,7 +248,7 @@ process qualimap {
 process rseqc_genebody_coverage {
 	tag "$smpl_id"
 	publishDir "${params.outdir}/${smpl_id}/qc/genebody_cov", mode:'copy'
-	errorStrategy 'ignore'
+	//errorStrategy 'ignore'
 	when:
 	params.qc || params.bodyCov
 	input :
@@ -271,10 +257,10 @@ process rseqc_genebody_coverage {
 	output:
 	//file '*.pdf' into gene_bodyCov_ch
 	file '*' into bodyCov_output_ch
-	file '*geneBodyCoverage.txt' into gene_bodyCov_ch
+	file '*.geneBodyCoverage.txt' into gene_bodyCov_ch
 	script:
 	"""
-	geneBody_coverage.py -i ${bam_f} -r ${ref_bed} -o output
+	geneBody_coverage.py -i ${bam_f} -r ${ref_bed} -o ${smpl_id}
 	"""
 }
 
@@ -370,7 +356,7 @@ process fusioncatcher {
 // /data/bnf/scripts/filter_aml_fusions.pl /data/bnf/premap/rnaseq/6192-11_0.fusioncatcher.folder > /data/bnf/premap/rnaseq/6192-11_0.fusioncatcher.xls
 
 process jaffa {
-	errorStrategy 'ignore'
+	//errorStrategy 'ignore'
     tag "$name"
     publishDir  "${params.outdir}/${name}/fusion/jaffa", mode: 'copy'
 
@@ -393,7 +379,7 @@ process jaffa {
 
 process create_refIndex{
 	cpus = 8
-	publishDir "${params.outdir}/salmon_refTrans_Index", mode:'copy'
+	publishDir "${params.outdir}/salmon_ref_Index", mode:'copy'
 	when:
 	params.quant 
 	input:
@@ -433,7 +419,7 @@ process quant{
 /* Combine QC files */
 
 process postaln_qc_rna{
-	
+	//errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/rsults" , mode:'copy'
 	
 	when:
@@ -455,16 +441,35 @@ process postaln_qc_rna{
 	"""
 } 
 
-/* Register to CMD */
-///data/bnf/scripts/register_sample.pl --run-folder /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY --sample-id 6192-11 --assay rnaseq-fusion --qc  /data/bnf/postmap/rnaseq/6192-11.STAR.rnaseq_QC
-
-/* Create fusion report 
+/* Register to CMD 
+process register_to_CMD{
+	publishDir "${params.outdir}/${smpl_id}/rsults" , mode:'copy'
+	input:
+	file (final_QC) from final_out
+	output:
+	file '*' into  registering_ch
+	script:
+	"""
+	register_sample.pl --run-folder /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY --sample-id ${smpl_id} --assay rnaseq-fusion --qc  ${final_QC}
+	"""
+	}
+// Create fusion report  
 process fusion_report{
 
+	publishDir "${params.outdir}/${smpl_id}/rsults" , mode:'copy'
+	input:
+	file quant from quant_ch
+	output:
+	file "${smpl_id}.STAR.fusionreport.html" into report
 	script:
-	""""
-	Rscript -e "rmarkdown::render('/data/bnf/scripts/fusion_classifier_report.Rmd',params=list(sampleid='$smpl_id', quant_in=${quant_ch},out_json='STAR.fusionreport',quantmethod='salmon'),output_file='/data/bnf/postmap/rnaseq/6192-11.STAR.fusionreport.html')"
+	"""
+	Rscript -e "rmarkdown::render('${fusion_report_file}', params=list(sampleid= '${smpl_id}',quant_in=${quant},out_json='STAR.fusionreport',quantmethod='salmon'),output_file='${smpl_id}.STAR.fusionreport.html')"
+	"""
 }
 */
+
 /* Prepare and upload to Coyote */
+
+
+
 
