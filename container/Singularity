@@ -47,13 +47,13 @@ From:nfcore/base
         Rscript -e 'install.packages("dplyr", repos="https://cloud.r-project.org/")'
         Rscript -e 'install.packages("reshape", repos="https://cloud.r-project.org/")'
         Rscript -e 'install.packages("cowplot", repos="https://cloud.r-project.org/")'
-	Rscript -e 'install.packages("rmarkdown", repos="https://cloud.r-project.org/")'
+	#Rscript -e 'install.packages("rmarkdown", repos="https://cloud.r-project.org/")'
 
 
 	ln /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 	#cd /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
-	wget https://s3-eu-west-1.amazonaws.com/pfigshare-u-files/16780934/JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
-	tar -xvzf JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
+	#wget https://s3-eu-west-1.amazonaws.com/pfigshare-u-files/16780934/JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
+	#tar -xvzf JAFFA_REFERENCE_FILES_HG38_GENCODE22.tar.gz
 	ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/
 	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/trimmomatic-0.39-1/trimmomatic.jar /usr/share/java/trimmomatic.jar
 	#ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/*hg38* /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/

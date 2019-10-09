@@ -18,6 +18,6 @@ dependencies:
     - bioconda::sambamba=0.7.0
     - bioconda::rseqc=3.0.0
     - conda-forge::r-base
-    #- r-jsonlite
-    #-conda-forge::r-optparse
+    - conda-forge::r-markdown=0.9
+    
     
