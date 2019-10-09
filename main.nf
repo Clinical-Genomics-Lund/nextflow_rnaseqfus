@@ -32,10 +32,15 @@ params.ref_bedXy= "/data/bnf/sw/provider/xy_38.bed"
 //params.ref_rseqc_bed ="/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/hg38_RefSeq_new.bed" //cat hg38_RefSeq.bed| sed 's/^chr//' > hg38_RefSeq_new.bed (nochr)
 //params.ref_rseqc_bed= "/data/bnf/ref/b37/b37_RefSeq.bed"
 //params.ref_rseqc_bed= "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/hg38.HouseKeepingGenes.nochr.bed"
-params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.bed"
+params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.nochr.bed"
 
 jaffa_file = file("/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/JAFFA_direct.groovy")
-fusion_report_file = file("/data/bnf/dev/sima/rnaSeq_fus/bin/fusion_classifier_report.Rmd")
+fusion_report_file = file("/data/bnf/dev/sima/rnaSeq_fus/custom_scripts/fusion_classifier_report.Rmd")
+
+
+//gencov.txt file 
+params.geneCov = "/data/bnf/dev/sima/rnaSeq_fus/results/XXX/qc/genebody_cov/TEST.geneBodyCoverage.txt"
+ gene_bodyCov_ch = Channel.fromPath(params.geneCov)
 
 /* Set running tool falgs */
 /* QC tools */
@@ -47,7 +52,7 @@ params.fastqscreen_genomes = true //This flag shows that the if config file for 
 params.qualimap = false
 params.bodyCov = true
 params.provider =false
-params.combine = false
+params.combine = true
 
 /* Fusion identification tools */
 params.fusion = true
@@ -265,6 +270,9 @@ process rseqc_genebody_coverage {
 }
 
 
+
+
+
 process provider{
 	tag "$smpl_id"
 	publishDir "${params.outdir}/${smpl_id}/qc/provider" , mode:'copy'
@@ -364,7 +372,6 @@ process jaffa {
 	params.jaffa || params.fusion
     input:
     set val(name), file(reads) from  read_files_jaffa
-    //file groovy from ch_jaffa_direktgroovy
     output:
     file '*.{fasta,csv}' into jaffa_output
     
@@ -377,7 +384,7 @@ process jaffa {
 
 /*Part3 : Expression quantification */
 
-process create_refIndex{
+process create_refIndex {
 	cpus = 8
 	publishDir "${params.outdir}/salmon_ref_Index", mode:'copy'
 	when:
@@ -420,7 +427,7 @@ process quant{
 
 process postaln_qc_rna{
 	//errorStrategy 'ignore'
-	publishDir "${params.outdir}/${smpl_id}/rsults" , mode:'copy'
+	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	
 	when:
 	params.combine 
@@ -434,41 +441,50 @@ process postaln_qc_rna{
 	
 	output:
 	file "${smpl_id}.STAR.rnaseq_QC" into final_out 
-	//--flendist
+	//--genebody ${geneCov}
 	script:
 	"""
-	postaln_qc_rna.R  --star ${star_final} --fusion ${fusion} --id '${smpl_id}' --genebody ${geneCov}  --provider ${provIder} --flendist ${flendist} > '${smpl_id}.STAR.rnaseq_QC'
+	postaln_qc_rna.R  --star ${star_final} --fusion ${fusion} --id '${smpl_id}'  --provider ${provIder} --flendist ${flendist} --genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
 	"""
 } 
 
-/* Register to CMD 
-process register_to_CMD{
-	publishDir "${params.outdir}/${smpl_id}/rsults" , mode:'copy'
+/* //Register to CMD 
+process register_to_CMD {
+	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	input:
 	file (final_QC) from final_out
 	output:
 	file '*' into  registering_ch
 	script:
 	"""
-	register_sample.pl --run-folder /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY --sample-id ${smpl_id} --assay rnaseq-fusion --qc  ${final_QC}
+	register_sample.pl --run-folder  /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY  --sample-id ${smpl_id} --assay rnaseq-fusion --qc  ${final_QC}
 	"""
 	}
+	
 // Create fusion report  
 process fusion_report{
 
-	publishDir "${params.outdir}/${smpl_id}/rsults" , mode:'copy'
+	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	input:
 	file quant from quant_ch
 	output:
 	file "${smpl_id}.STAR.fusionreport.html" into report
 	script:
 	"""
-	Rscript -e "rmarkdown::render('${fusion_report_file}', params=list(sampleid= '${smpl_id}',quant_in=${quant},out_json='STAR.fusionreport',quantmethod='salmon'),output_file='${smpl_id}.STAR.fusionreport.html')"
+	Rscript -e 'rmarkdown::render("${fusion_report_file}", params=list(sampleid= "${smpl_id}",quant_in="${quant}",out_json="STAR.fusionreport",quantmethod="salmon"),output_file="${smpl_id}.STAR.fusionreport.html")'
 	"""
+
 }
+
+
 */
 
 /* Prepare and upload to Coyote */
+
+/*
+aggregate_fusions.pl --fusioncatcher  $fusioncatcher --starfusion $starfusion --jaffa $jaffa --priority fusioncatcher,jaffa,starfusion > /data/bnf/6192-11.agg.vcf
+import_fusion_to_coyote.pl --classification /data/bnf/postmap/rnaseq/6192-11.STAR.fusionreport --fusions /data/bnf/6192-11.agg.vcf --id 6192-11-fusions --qc /data/bnf/postmap/rnaseq/6192-11.STAR.rnaseq_QC --group fusion
+*/ 
 
 
 
