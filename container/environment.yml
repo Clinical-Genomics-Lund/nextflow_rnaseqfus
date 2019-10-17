@@ -18,6 +18,6 @@ dependencies:
     - bioconda::sambamba=0.7.0
     - bioconda::rseqc=3.0.0
     - conda-forge::r-base
-    - conda-forge::r-markdown=0.9
+    #- conda-forge::r-rmarkdown
     
     
