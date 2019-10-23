@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 use strict;
 use CMD::tsv qw( read_tsv );
 use Data::Dumper;
