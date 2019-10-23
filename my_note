@@ -1,0 +1,12 @@
+To get fastq_screen run, we need to have genome data and config file. Using fastq_screen --get-genomes whill download both ref data and config file. 
+error: handshake in perl: Perl has to be installed in container and the shebang needs to be set properly!!!
+
+
+
+
+Download Path: 
+
+genome fasta : ftp://ftp.ensembl.org/pub/release-77/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa.gz
+gtf : ftp://ftp.ensembl.org/pub/release-98/gtf/homo_sapiens/Homo_sapiens.GRCh38.98.gtf.gz 
+
+
