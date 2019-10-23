@@ -18,6 +18,10 @@ dependencies:
     - bioconda::sambamba=0.7.0
     - bioconda::rseqc=3.0.0
     - conda-forge::r-base
+    - perl
+    #- perl-app-cpanminus
+    - bioconda::perl-file-find-rule
+    - bioconda::perl-json
     #- conda-forge::r-rmarkdown
     
     
