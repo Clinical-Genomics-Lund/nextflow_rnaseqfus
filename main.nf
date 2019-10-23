@@ -1,5 +1,10 @@
 #!/usr/bin/dev nextflow
 
+params.bam_file = "/data/bnf/dev/sima/rnaSeq_fus/results/ALL354A185_122-59112_S5_R/star/Aligned.sortedByCoord.out.bam"
+Channel.fromPath(params.bam_file)
+		.set{star_sort_bam_2_1}
+
+
 /* Input files */ 
 params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
 //params.reads = "/data/NextSeq1/190829_NB501697_0156_AH35YWBGXC/Data/Intensities/BaseCalls/ALL358A798_122-60853_S9_R{1,2}_001.fastq.gz"
@@ -9,9 +14,10 @@ params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/
 smpl_id = 'ALL354A185_122-59112_S5_R'
 
 
-
 params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa" //fasta file from ensembl
 params.genome_gtf = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/gtf/Homo_sapiens.GRCh38.98.gtf" //fasta file from ensembl
+
+params.ref_genome_dir = "/data/bnf/dev/sima/rnaSeq_fus/results/star_refGenome_index/star_ref_index" 
 
 /* fastqscreen genome config file */
 params.genome_conf = "/data/bnf/dev/sima/rnaSeq_fus/data/fastqScreen/FastQ_Screen_Genomes/fastq_screen.conf"
@@ -33,18 +39,18 @@ params.ref_bedXy= "/data/bnf/sw/provider/xy_38.bed"
 
 //BodyCov
 params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.nochr.bed"
+//gencov.txt file : has to be fixed!!!!!!!
+params.geneCov = "/data/bnf/dev/sima/rnaSeq_fus/test.geneBodyCoverage.txt"
+//gene_bodyCov_ch = Channel.fromPath(params.geneCov)
 
+
+//jaffa
 jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/JAFFA_direct.groovy"
 
 
-
-//gencov.txt file : has to be fixed!!!!!!!
-params.geneCov = "/data/bnf/dev/sima/rnaSeq_fus/test.geneBodyCoverage.txt"
-gene_bodyCov_ch = Channel.fromPath(params.geneCov)
-
 /* Set running tool flags */
 /* QC tools */
-params.qc = false
+params.qc = true
 params.star_inedx = false
 params.star = false
 params.fastqscreen = false
@@ -55,24 +61,31 @@ params.provider =false
 params.combine = false
 
 /* Fusion identification tools */
-params.fusion = false
+params.fusion = true
 params.star_fusion = false
 params.fusioncatcher = false
-params.jaffa = true
+params.jaffa = false
 
 /* Reads quantification tool */
-params.quant = false
+params.quant = true
 
 /* Other flags */
 params.singleEnd= false
 
 /* Define channels */
+
+
 Channel
         .fromFilePairs( params.reads )
         .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
         .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star; read_files_star_align; read_files_salmon; read_files_fastqscreen}
 	
-Channel.fromPath(params.genome_fasta).set{genome_fasta_ch}
+//Channel.fromPath(params.genome_fasta).set{genome_fasta_ch}
+		
+
+genome_index = Channel.fromPath(params.ref_genome_dir )
+			.ifEmpty { exit 1, "genome reference directory not found!" }
+
 
 Channel
 	.fromPath(params.genome_gtf)
@@ -102,6 +115,8 @@ ref_file_salmon = Channel
 
 
 /* Part1: QC */
+
+/*
 process build_star_index {
 
 	publishDir "${params.outdir}/star_refGenome_index", mode:'copy'
@@ -127,6 +142,7 @@ process build_star_index {
 		--genomeFastaFiles ${fasta} 
 	"""	
 }
+*/
 
 process star_alignment{
 	
@@ -138,13 +154,13 @@ process star_alignment{
 
 	input:
 		set val(name), file (reads) from read_files_star_align
-		file (index_files) from  star_index
+		file (index_files) from  genome_index  //star_index
 	
 	output:
 		set file("Log.final.out"), file ('*.bam') into star_aligned
 		file "SJ.out.tab"
 		file "Log.out" into star_log
-		file "Aligned.sortedByCoord.out.bam" into aligned_bam, star_sort_bam , star_sort_bam_1, star_sort_bam_2
+		file "Aligned.sortedByCoord.out.bam" into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
 		file "Log.final.out" into star_logFinalOut_ch
 
 	script: 
@@ -155,10 +171,9 @@ process star_alignment{
 	--runThreadN ${task.cpus} \\
 	--outSAMtype BAM SortedByCoordinate \\
 	--readFilesCommand zcat \\
-	--genomeLoad LoadAndKeep \\
 	--limitBAMsortRAM 10000000000
 	"""
-	//other options: --sjdbGTFfile ${gtf2} \\ --twopassMode Basic \\
+	//other options: --sjdbGTFfile ${gtf2} \\ --twopassMode Basic \\ //--genomeLoad LoadAndKeep \\ 
 }
 
 process SamBamBa {
@@ -244,19 +259,24 @@ process qualimap {
 }
 
 	
-process rseqc_genebody_coverage {
+process rseqc_genebody_coverage{
 	tag "$smpl_id"
 	publishDir "${params.outdir}/${smpl_id}/qc/genebody_cov", mode:'copy'
 	errorStrategy 'ignore'
+
 	when:
-	params.qc || params.bodyCov
+		params.qc || params.bodyCov
+	
 	input :
-	file (ref_bed) from  ref_RseQC_ch
-	file (bam_f) from star_sort_bam_1
+	
+		file (ref_bed) from ref_RseQC_ch
+		file (bam_f) from star_sort_bam_1
+	
 	output:
-	//file '*.pdf' into gene_bodyCov_ch
-	file '*' into bodyCov_output_ch
-	file '*.geneBodyCoverage.txt' into gene_bodyCov_ch_
+		file "${smpl_id}*.pdf" into gene_bodyCov_ch
+		//file '${smpl_id}*' into bodyCov_output_ch
+		file "${smpl_id}.geneBodyCoverage.txt" into gene_bodyCov_ch_
+	
 	script:
 	"""
 	geneBody_coverage.py -i ${bam_f} -r ${ref_bed} -o ${smpl_id}
@@ -279,7 +299,7 @@ process provider{
 	file "*.genotypes" into provider_output_ch
 
 	script:
-	prefix = "output_provider"
+	prefix = "${smpl_id}"
 	"""
 	provider.pl  --out ${prefix} --bed ${bed_f} --bam ${bam_f} --bedxy ${bedXy_f}
 	"""
@@ -360,8 +380,8 @@ process filter_aml_fusions {
 }
 
 process jaffa {
-
     tag "$name"
+	errorStrategy 'ignore'
     publishDir  "${params.outdir}/${name}/fusion/jaffa", mode: 'copy'
 
     when:
@@ -375,25 +395,26 @@ process jaffa {
     
     script:
     """
-    bpipe run  -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  $jaffa_file  ${reads[0]} ${reads[1]}  
+    bpipe run  -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  ${jaffa_file}  ${reads[0]} ${reads[1]}  
     """
 }
-
+ /* fuseq : FuSeq_v1.1.2_linux_x86-64/R/FuSeq.R */
 
 /*Part3 : Expression quantification */
 
 process create_refIndex {
 	cpus = 8
 	publishDir "${params.outdir}/salmon_ref_Index", mode:'copy'
+
 	when:
-	params.quant 
+		params.quant 
 
 	input:
-	file (ref) from ref_file_salmon 
-    file (decoys) from decoys_file              
+		file (ref) from ref_file_salmon 
+    	file (decoys) from decoys_file              
 
 	output:
-	file 'ref_index' into ref_index_ch
+		file 'ref_index' into ref_index_ch
 
 	script:
 	"""
@@ -401,9 +422,11 @@ process create_refIndex {
 	"""  
 	}
 
+
+
 process quant{
 	tag "$name"
-	publishDir "${params.outdir}/${name}", mode:'copy'
+	publishDir "${params.outdir}/${name}/quant", mode:'copy'
 	cpus = 8
 	when:
 	params.quant 
@@ -415,12 +438,33 @@ process quant{
 	output:
 	file  'quant'  into transcripts_quant_ch
 	file 'quant/libParams/flenDist.txt' into flendist_ch
-	file 'quant/quant.sf' into quant_ch
+	file 'quant/quant.sf' into quant_ch, quant_ch_extract
 	script:
 	"""
 	salmon quant --threads $task.cpus -i $index -l A -1 ${reads[0]} -2 ${reads[1]} --validateMappings -o 'quant'
 	"""
 }
+
+
+process extract_expression {
+	errorStrategy 'ignore'
+	publishDir "${params.outdir}/${smpl_id}/quant", mode:'copy'
+	input:
+	file (quants) from quant_ch_extract
+
+	output:
+	file "*" into salmon_expr_ch
+
+	script:
+	"""
+	extract_expression_fusion.R  ${quants}  ${smpl_id}.salmon.expr
+	"""
+
+}
+
+
+
+/* Part 4: Post processing */  
 
 // Create fusion report  
 process create_fusion_report{
@@ -432,17 +476,15 @@ process create_fusion_report{
 	file "${smpl_id}.STAR.fusionreport" into report
 	script:
 	"""
-	/data/bnf/dev/sima/rnaSeq_fus/bin/fusion_classifier_report.R  ${smpl_id}  ${quant}  ${smpl_id}.STAR.fusionreport
+	fusion_classifier_report.R  ${smpl_id}  ${quant}  ${smpl_id}.STAR.fusionreport
 	"""
 
 }
 
-/* /data/bnf/scripts/extract_expression_fusion.R*/
 
 
 /* post alignment */
 process postaln_qc_rna{
-
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	errorStrategy 'ignore'
 	
@@ -452,12 +494,12 @@ process postaln_qc_rna{
 	input:
 	file (star_final) from star_logFinalOut_ch
 	file (fusion) from final_list_fusionCatcher_ch
-	file (geneCov) from gene_bodyCov_ch
+	file (geneCov) from gene_bodyCov_ch_
 	file (provIder) from provider_output_ch
 	file (flendist) from flendist_ch
 	
 	output:
-	file "${smpl_id}.STAR.rnaseq_QC" into final_out 
+	file "${smpl_id}.STAR.rnaseq_QC" into final_QC 
 	//--genebody ${geneCov}
 	script:
 	"""
@@ -470,26 +512,27 @@ process postaln_qc_rna{
 process register_to_CMD {
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	input:
-	file (final_QC) from final_out
+	file (final_QC_file) from final_QC
 	output:
 	file '*' into  registering_ch
 	script:
 	"""
-	register_sample.pl --run-folder  /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY  --sample-id ${smpl_id} --assay rnaseq-fusion --qc  ${final_QC}
+	register_sample.pl --run-folder  /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY  --sample-id ${smpl_id} --assay rnaseq-fusion --qc  ${final_QC_file}
 	"""
 	}
 */
 
 
 
-/* Prepare and upload to Coyote */
+/* Part 5 :  Prepare for and upload to Coyote */
 
+// aggregate fusion files
 process aggregate_fusion{
 	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode: 'copy'
 
 	input:
-		file (fusionCatcher_file) from  final_list_fusionCatcher_agg_ch
+		file (fusionCatcher_file) from final_list_fusionCatcher_agg_ch
 		file (starFusion_file) from star_fusion_agg_ch
 		file (fusionJaffa_file) from jaffa_csv_ch
 
@@ -506,10 +549,17 @@ process aggregate_fusion{
 		--priority fusioncatcher,jaffa,starfusion > ${smpl_id}.agg.vcf
 	"""
 }
+
+
 /*
+process import_o_Coyote{
+	input:
+	file (fusion_agg) from agg_vcf_ch
+	file 
+
 import_fusion_to_coyote.pl --classification /data/bnf/postmap/rnaseq/6192-11.STAR.fusionreport --fusions /data/bnf/6192-11.agg.vcf --id 6192-11-fusions --qc /data/bnf/postmap/rnaseq/6192-11.STAR.rnaseq_QC --group fusion
 */ 
 
 
-
+//env PERL5LIB= PERL_LOCAL_LIB_ROOT= cpan
 
