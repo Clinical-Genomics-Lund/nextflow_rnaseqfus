@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 suppressMessages(suppressWarnings(library(jsonlite)))
 suppressMessages(suppressWarnings(library(optparse)))
 

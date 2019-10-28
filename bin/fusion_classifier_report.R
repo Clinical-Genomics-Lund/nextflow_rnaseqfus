@@ -1,4 +1,4 @@
-#!/usr/bin/Rscript
+#!/usr/bin/env Rscript
 args = commandArgs(trailingOnly=TRUE)
 
 #/usr/bin/Rscript /data/bnf/scripts/fusion_classifier_report.R '8948-19-fusions' '/data/bnf/premap/rnaseq/8948-19-fusions_0.salmon' '/data/bnf/postmap/rnaseq/8948-19-fusions.STAR.fusionreport'
