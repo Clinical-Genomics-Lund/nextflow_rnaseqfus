@@ -58,7 +58,7 @@ params.fastqscreen_genomes = true //This flag shows that if config file for fast
 params.qualimap = false
 params.bodyCov = false
 params.provider =false
-params.combine = false
+params.combine = true
 
 /* Fusion identification tools */
 params.fusion = true
@@ -312,7 +312,7 @@ process star_fusion{
 	errorStrategy 'ignore'
     tag "$name"
     cpus 8  
-    publishDir "${params.outdir}/${name}/fusion/StarFusion", mode: 'copy'
+    publishDir "${params.outdir}/${name}/fusion/StarFusion/", mode: 'copy'
 
     when:
     params.star_fusion || params.fusion 
@@ -323,7 +323,7 @@ process star_fusion{
     file (reference) from star_fusion_ref
 
     output:
-    file '*fusion_predictions.tsv' optional true into star_fusion_fusions, star_fusion_agg_ch
+    file 'star-fusion.fusion_predictions.tsv' optional true into star_fusion_agg_ch
     file '*.{tsv,txt}' into star_fusion_output
 
     script:
@@ -446,7 +446,7 @@ process quant{
 }
 
 
-process extract_expression {
+process extract_expression{
 	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/quant", mode:'copy'
 	input:
