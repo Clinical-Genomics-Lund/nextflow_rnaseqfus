@@ -1,8 +1,5 @@
 #!/usr/bin/dev nextflow
 
-
-
-
 /* Input files */ 
 params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
 //params.reads = "/data/NextSeq1/190829_NB501697_0156_AH35YWBGXC/Data/Intensities/BaseCalls/ALL358A798_122-60853_S9_R{1,2}_001.fastq.gz"
@@ -48,7 +45,7 @@ jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groo
 
 /* Set running tool flags */
 /* QC tools */
-params.qc = false
+params.qc = true
 params.star_inedx = false
 params.star = true
 params.fastqscreen = false
@@ -59,13 +56,13 @@ params.provider =false
 params.combine = true
 
 /* Fusion identification tools */
-params.fusion = false
+params.fusion = true
 params.star_fusion = true
 params.fusioncatcher = false
 params.jaffa = false
 
 /* Reads quantification tool */
-params.quant = false
+params.quant = true
 
 /* Other flags */
 params.singleEnd= false
@@ -147,8 +144,9 @@ process star_alignment{
 	tag "$name"
 	publishDir "${params.outdir}/${name}/star", mode :'copy'
 	cpus = 8
+
 	when:
-	params.qc || params.star
+		params.qc || params.star
 
 	input:
 		set val(name), file (reads) from read_files_star_align
@@ -172,20 +170,14 @@ process star_alignment{
 	--readFilesCommand zcat \\
 	--limitBAMsortRAM 10000000000 \\
 	--twopassMode Basic \\
-	--chimSegmentMin 12 \\   
-    --chimJunctionOverhangMin 12 \\
-    --chimOutJunctionFormat 1 \\   
-    --alignSJDBoverhangMin 10 \\
-    --alignMatesGapMax 100000 \\  
-    --alignIntronMax 100000 \\
-    --alignSJstitchMismatchNmax 5 -1 5 5 \\   
-    --outSAMattrRGline ID:GRPundef \\
-    --chimMultimapScoreRange 3 \\
-    --chimScoreJunctionNonGTAG -4 \\
-    --chimMultimapNmax 20 \\
-    --chimNonchimScoreDropMin 10 \\
-    --peOverlapNbasesMin 12 \\
-    --peOverlapMMp 0.1 
+	--chimSegmentMin 12 \\
+	--chimJunctionOverhangMin 12 \\
+	--chimOutJunctionFormat 1 \\
+	--chimSegmentReadGapMax 3 \\
+	--alignSJDBoverhangMin 10 \\
+	--alignMatesGapMax 100000 \\
+	--alignIntronMax 100000 \\
+	--alignSJstitchMismatchNmax 5 -1 5 5 
 	"""
 	
 }
@@ -254,17 +246,19 @@ process qualimap {
 	tag  "$smpl_id"
 	publishDir "${params.outdir}/${smpl_id}/qc/qualimap", mode :'copy'
 	errorStrategy 'ignore'
-	//when :
-	//params.qc || params.qualimap
+
+	when :
+		params.qc || params.qualimap
 
 	input:
-	file (bam_f) from star_sort_bam
-	file (gtf_qualimap) from gtf38_qualimap
+		file (bam_f) from star_sort_bam
+		file (gtf_qualimap) from gtf38_qualimap
 
 	output:
-	file '*' into qualimap_ch
+		file '*' into qualimap_ch
 
 	script:
+
 	"""
 	export JAVA_OPTS='-Djava.io.tmpdir=/data/tmp'
 	qualimap --java-mem-size=12G rnaseq -bam ${bam_f} -gtf ${gtf_qualimap} -pe -outdir . 
@@ -332,15 +326,15 @@ process star_fusion{
     publishDir "${params.outdir}/${name}/fusion/StarFusion/", mode: 'copy'
 
     when:
-    	params.star_fusion || params.fusion 
+    params.star_fusion || params.fusion 
 
     input:
-    	set val(name), file(reads) from read_files_star_fusion
-    	file (reference) from star_fusion_ref
+	set val(name), file(reads) from read_files_star_fusion
+	file (reference) from star_fusion_ref
 		file (junction) from star_junction_ch
     output:
-    	file 'star-fusion.fusion_predictions.tsv' optional true into star_fusion_agg_ch
-    	file '*.{tsv,txt}' into star_fusion_output
+	file 'star-fusion.fusion_predictions.tsv' optional true into star_fusion_agg_ch
+	file '*.{tsv,txt}' into star_fusion_output
 
     script:
     //def avail_mem = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ''
@@ -353,19 +347,19 @@ process star_fusion{
         ${option}\\
         --CPU ${task.cpus} \\
         --output_dir . \\
-		--FusionInspector validate  \\
-		--verbose_level 2 
+	--FusionInspector validate  \\
+	--verbose_level 2 
 		
     """
 	*/
 	"""
 	 STAR-Fusion \\
         --genome_lib_dir ${reference} \\
-		--j ${junction} \\
+	--J ${junction} \\
         --CPU ${task.cpus} \\
         --output_dir . \\
-		--FusionInspector validate  \\
-		--verbose_level 2 
+	--FusionInspector validate  \\
+	--verbose_level 2 
 	"""
 		
 }
@@ -400,8 +394,11 @@ process fusioncatcher{
 process filter_aml_fusions {
 	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/fusion/FusionCatcher", mode: 'copy'
+
+	when: 
+		params.fusioncatcher || params.fusion
 	input:
-	file (fusioncatcher_files) from fusioncatcher_output
+		file (fusioncatcher_files) from fusioncatcher_output
 
 	output:
 	file "${smpl_id}.fusioncatcher.xls" into filter_fusion_ch
@@ -417,18 +414,20 @@ process jaffa {
     publishDir  "${params.outdir}/${name}/fusion/jaffa", mode: 'copy'
 
     when:
-    params.jaffa || params.fusion
+    	params.jaffa || params.fusion
+
     input:
-    set val(name), file(reads) from  read_files_jaffa
+    	set val(name), file(reads) from  read_files_jaffa
 
     output:
-    file "*.csv" into jaffa_csv_ch
-    file "*.fasta" into jaffa_fasta_ch 
+    	file "*.csv" into jaffa_csv_ch
+    	file "*.fasta" into jaffa_fasta_ch 
     
     script:
-    """
-    bpipe run  -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  ${jaffa_file}  ${reads[0]} ${reads[1]}  
-    """
+
+   	"""
+   	bpipe run  -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  ${jaffa_file}  ${reads[0]} ${reads[1]}  
+   	"""
 }
  /* fuseq : FuSeq_v1.1.2_linux_x86-64/R/FuSeq.R */
 
@@ -460,6 +459,7 @@ process quant{
 	tag "$name"
 	publishDir "${params.outdir}/${name}/quant", mode:'copy'
 	cpus = 8
+
 	when:
 		params.quant 
 
@@ -513,7 +513,6 @@ process create_fusion_report{
 		file "${smpl_id}.STAR.fusionreport" into report
 
 	script:
-
 	"""
 	fusion_classifier_report.R  ${smpl_id}  ${quant}  ${smpl_id}.STAR.fusionreport
 	"""
@@ -526,9 +525,9 @@ process create_fusion_report{
 process postaln_qc_rna {
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	errorStrategy 'ignore'
-	
+
 	when:
-	params.combine 
+		params.combine 
 
 	input:
 		file (star_final) from star_logFinalOut_ch
@@ -542,6 +541,7 @@ process postaln_qc_rna {
 
 	
 	script:
+
 	"""
 	postaln_qc_rna.R  --star ${star_final} --fusion ${fusion} --id '${smpl_id}'  --provider ${provIder} --flendist ${flendist} --genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
 	"""
