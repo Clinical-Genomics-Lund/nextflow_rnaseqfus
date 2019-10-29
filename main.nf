@@ -1,8 +1,6 @@
 #!/usr/bin/dev nextflow
 
-params.bam_file = "/data/bnf/dev/sima/rnaSeq_fus/results/ALL354A185_122-59112_S5_R/star/Aligned.sortedByCoord.out.bam"
-Channel.fromPath(params.bam_file)
-		.set{star_sort_bam_2_1}
+
 
 
 /* Input files */ 
@@ -38,14 +36,14 @@ params.ref_bedXy= "/data/bnf/sw/provider/xy_38.bed"
 
 
 //BodyCov
-params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.nochr.bed"
+params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.bed"
 //gencov.txt file : has to be fixed!!!!!!!
 params.geneCov = "/data/bnf/dev/sima/rnaSeq_fus/test.geneBodyCoverage.txt"
 //gene_bodyCov_ch = Channel.fromPath(params.geneCov)
 
 
 //jaffa
-jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1/JAFFA_direct.groovy"
+jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
 
 
 /* Set running tool flags */
@@ -274,7 +272,6 @@ process rseqc_genebody_coverage{
 	
 	output:
 		file "${smpl_id}*.pdf" into gene_bodyCov_ch
-		//file '${smpl_id}*' into bodyCov_output_ch
 		file "${smpl_id}.geneBodyCoverage.txt" into gene_bodyCov_ch_
 	
 	script:
@@ -285,20 +282,24 @@ process rseqc_genebody_coverage{
 
 
 process provider{
+
 	tag "$smpl_id"
 	publishDir "${params.outdir}/${smpl_id}/qc/provider" , mode:'copy'
 	errorStrategy 'ignore'
+
 	when:
-	params.qc || params.provider
+		params.qc || params.provider
+
 	input:
-	file (bam_f) from star_sort_bam_2
-	file (bed_f) from bed_ch
-	file (bedXy_f) from bedXy_ch	
+		file (bam_f) from star_sort_bam_2
+		file (bed_f) from bed_ch
+		file (bedXy_f) from bedXy_ch	
 	
 	output:
-	file "*.genotypes" into provider_output_ch
+		file "*.genotypes" into provider_output_ch
 
 	script:
+
 	prefix = "${smpl_id}"
 	"""
 	provider.pl  --out ${prefix} --bed ${bed_f} --bam ${bam_f} --bedxy ${bedXy_f}
@@ -315,16 +316,16 @@ process star_fusion{
     publishDir "${params.outdir}/${name}/fusion/StarFusion/", mode: 'copy'
 
     when:
-    params.star_fusion || params.fusion 
+    	params.star_fusion || params.fusion 
 
     input:
-    set val(name), file(reads) from read_files_star_fusion
-    //file star_index_star_fusion
-    file (reference) from star_fusion_ref
+    	set val(name), file(reads) from read_files_star_fusion
+    
+    	file (reference) from star_fusion_ref
 
     output:
-    file 'star-fusion.fusion_predictions.tsv' optional true into star_fusion_agg_ch
-    file '*.{tsv,txt}' into star_fusion_output
+    	file 'star-fusion.fusion_predictions.tsv' optional true into star_fusion_agg_ch
+    	file '*.{tsv,txt}' into star_fusion_output
 
     script:
     //def avail_mem = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ''
@@ -335,47 +336,51 @@ process star_fusion{
         --genome_lib_dir ${reference} \\
         ${option}\\
         --CPU ${task.cpus} \\
-        --output_dir .  --verbose_level 2
+        --output_dir . \\
+		--FusionInspector validate  \\
+		--verbose_level 2 
+		
     """
-	// optins: --FusionInspector validate >> error
 }
 
-process fusioncatcher {
+process fusioncatcher{
 	errorStrategy 'ignore'
     tag "$name"
     cpus 4  
     publishDir "${params.outdir}/${name}/fusion/FusionCatcher", mode: 'copy'
 
-    when: params.fusioncatcher || params.fusion
+    when: 
+		params.fusioncatcher || params.fusion
 
     input:
-    set val(name), file(reads) from read_files_fusioncatcher
-    file (data_dir) from fusionCatcher_ref
+    	set val(name), file(reads) from read_files_fusioncatcher
+    	file (data_dir) from fusionCatcher_ref
 
     output:
-	file 'final-list_candidate-fusion-genes.txt' optional true into fusioncatcher_fusions
-	file 'final-list_candidate-fusion-genes.hg19.txt' into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
-    file '*.{txt,zip,log}' into fusioncatcher_output
+		file 'final-list_candidate-fusion-genes.txt' optional true into fusioncatcher_fusions
+		file 'final-list_candidate-fusion-genes.hg19.txt' into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
+   		file '*.{txt,zip,log}' into fusioncatcher_output
 
     script:
-    option = params.singleEnd ? reads[0] : "${reads[0]},${reads[1]}"
-    //def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
-    """
-    fusioncatcher -d ${data_dir} -i ${option}  --threads ${task.cpus} -o . 
-    """
+
+    	option = params.singleEnd ? reads[0] : "${reads[0]},${reads[1]}"
+    	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
+    	"""
+   		fusioncatcher -d ${data_dir} -i ${option}  --threads ${task.cpus} -o . 
+    	"""
 }
 
 process filter_aml_fusions {
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}/${name}/fusion/FusionCatcher", mode: 'copy'
+	publishDir "${params.outdir}/${smpl_id}/fusion/FusionCatcher", mode: 'copy'
 	input:
 	file (fusioncatcher_files) from fusioncatcher_output
 
 	output:
-	file '${smpl_id}.fusioncatcher.xls' into filter_fusion_ch
+	file "${smpl_id}.fusioncatcher.xls" into filter_fusion_ch
 	script:
 	"""
-	filter_aml_fusions.pl  ${fusioncatcher_files} >  ${smpl_id}.fusioncatcher.xls
+	filter_aml_fusions.pl ${fusioncatcher_files} > ${smpl_id}.fusioncatcher.xls
 	"""
 }
 
@@ -400,7 +405,9 @@ process jaffa {
 }
  /* fuseq : FuSeq_v1.1.2_linux_x86-64/R/FuSeq.R */
 
-/*Part3 : Expression quantification */
+/***************************************************/
+/*  Part3 : Expression quantification    */
+/****************************************************/
 
 process create_refIndex {
 	cpus = 8
@@ -422,31 +429,32 @@ process create_refIndex {
 	"""  
 	}
 
-
-
 process quant{
 	tag "$name"
 	publishDir "${params.outdir}/${name}/quant", mode:'copy'
 	cpus = 8
 	when:
-	params.quant 
+		params.quant 
 
 	input:
-	set val(name), file (reads) from read_files_salmon
-	file (index) from ref_index_ch	
+		set val(name), file (reads) from read_files_salmon
+		file (index) from ref_index_ch	
 
 	output:
-	file  'quant'  into transcripts_quant_ch
-	file 'quant/libParams/flenDist.txt' into flendist_ch
-	file 'quant/quant.sf' into quant_ch, quant_ch_extract
+		file  'quant'  into transcripts_quant_ch
+		file 'quant/libParams/flenDist.txt' into flendist_ch
+		file 'quant/quant.sf' into quant_ch, quant_ch_extract
+
 	script:
+
 	"""
 	salmon quant --threads $task.cpus -i $index -l A -1 ${reads[0]} -2 ${reads[1]} --validateMappings -o 'quant'
 	"""
 }
 
 
-process extract_expression{
+/*
+process extract_expression {
 	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/quant", mode:'copy'
 	input:
@@ -461,7 +469,7 @@ process extract_expression{
 	"""
 
 }
-
+*/
 
 
 /* Part 4: Post processing */  
@@ -470,11 +478,15 @@ process extract_expression{
 process create_fusion_report{
 	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
+
 	input:
-	file quant from quant_ch
+		file (quant) from quant_ch
+
 	output:
-	file "${smpl_id}.STAR.fusionreport" into report
+		file "${smpl_id}.STAR.fusionreport" into report
+
 	script:
+
 	"""
 	fusion_classifier_report.R  ${smpl_id}  ${quant}  ${smpl_id}.STAR.fusionreport
 	"""
@@ -484,7 +496,7 @@ process create_fusion_report{
 
 
 /* post alignment */
-process postaln_qc_rna{
+process postaln_qc_rna {
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	errorStrategy 'ignore'
 	
@@ -492,15 +504,16 @@ process postaln_qc_rna{
 	params.combine 
 
 	input:
-	file (star_final) from star_logFinalOut_ch
-	file (fusion) from final_list_fusionCatcher_ch
-	file (geneCov) from gene_bodyCov_ch_
-	file (provIder) from provider_output_ch
-	file (flendist) from flendist_ch
+		file (star_final) from star_logFinalOut_ch
+		file (fusion) from final_list_fusionCatcher_ch
+		file (geneCov) from gene_bodyCov_ch_
+		file (provIder) from provider_output_ch
+		file (flendist) from flendist_ch
 	
 	output:
-	file "${smpl_id}.STAR.rnaseq_QC" into final_QC 
-	//--genebody ${geneCov}
+		file "${smpl_id}.STAR.rnaseq_QC" into final_QC 
+
+	
 	script:
 	"""
 	postaln_qc_rna.R  --star ${star_final} --fusion ${fusion} --id '${smpl_id}'  --provider ${provIder} --flendist ${flendist} --genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
