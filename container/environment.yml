@@ -7,8 +7,9 @@ channels:
 dependencies:
     #- bioconda::bedtools=2.28.0
     #- bioconda::samtools=1.9
+    #- bioconda::star-fusion=1.7.0
     - bioconda::star=2.7.2b
-    - bioconda::jaffa=1.09   
+    - bioconda::jaffa=1.09  
     - bioconda::salmon=0.14.1
     - bioconda::fastq-screen=0.13.0
     - bioconda::qualimap=2.2.2c
@@ -22,6 +23,7 @@ dependencies:
     - conda-forge::r-reshape=0.8.8
     - conda-forge::r-knitr=1.25
     - conda-forge::r-optparse=1.6.4
+    #- bioconda::r-tximport=0.0.15
     - perl
     #- perl-app-cpanminus
     - bioconda::perl-file-find-rule
