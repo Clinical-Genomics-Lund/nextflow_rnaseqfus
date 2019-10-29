@@ -48,9 +48,9 @@ jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groo
 
 /* Set running tool flags */
 /* QC tools */
-params.qc = true
+params.qc = false
 params.star_inedx = false
-params.star = false
+params.star = true
 params.fastqscreen = false
 params.fastqscreen_genomes = true //This flag shows that if config file for fastqscreen already exists or not. 
 params.qualimap = false
@@ -59,13 +59,13 @@ params.provider =false
 params.combine = true
 
 /* Fusion identification tools */
-params.fusion = true
-params.star_fusion = false
+params.fusion = false
+params.star_fusion = true
 params.fusioncatcher = false
 params.jaffa = false
 
 /* Reads quantification tool */
-params.quant = true
+params.quant = false
 
 /* Other flags */
 params.singleEnd= false
@@ -160,6 +160,7 @@ process star_alignment{
 		file "Log.out" into star_log
 		file "Aligned.sortedByCoord.out.bam" into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
 		file "Log.final.out" into star_logFinalOut_ch
+		file "Chimeric.out.junction" into star_junction_ch
 
 	script: 
 
@@ -169,9 +170,24 @@ process star_alignment{
 	--runThreadN ${task.cpus} \\
 	--outSAMtype BAM SortedByCoordinate \\
 	--readFilesCommand zcat \\
-	--limitBAMsortRAM 10000000000
+	--limitBAMsortRAM 10000000000 \\
+	--twopassMode Basic \\
+	--chimSegmentMin 12 \\   
+    --chimJunctionOverhangMin 12 \\
+    --chimOutJunctionFormat 1 \\   
+    --alignSJDBoverhangMin 10 \\
+    --alignMatesGapMax 100000 \\  
+    --alignIntronMax 100000 \\
+    --alignSJstitchMismatchNmax 5 -1 5 5 \\   
+    --outSAMattrRGline ID:GRPundef \\
+    --chimMultimapScoreRange 3 \\
+    --chimScoreJunctionNonGTAG -4 \\
+    --chimMultimapNmax 20 \\
+    --chimNonchimScoreDropMin 10 \\
+    --peOverlapNbasesMin 12 \\
+    --peOverlapMMp 0.1 
 	"""
-	//other options: --sjdbGTFfile ${gtf2} \\ --twopassMode Basic \\ //--genomeLoad LoadAndKeep \\ 
+	
 }
 
 process SamBamBa {
@@ -320,9 +336,8 @@ process star_fusion{
 
     input:
     	set val(name), file(reads) from read_files_star_fusion
-    
     	file (reference) from star_fusion_ref
-
+		file (junction) from star_junction_ch
     output:
     	file 'star-fusion.fusion_predictions.tsv' optional true into star_fusion_agg_ch
     	file '*.{tsv,txt}' into star_fusion_output
@@ -331,7 +346,8 @@ process star_fusion{
     //def avail_mem = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ''
     option = params.singleEnd ? "--left_fq ${reads[0]}" : "--left_fq ${reads[0]} --right_fq ${reads[1]}"
     //def extra_params = params.star_fusion_opt ? "${params.star_fusion_opt}" : ''
-    """
+    /*
+	"""
     STAR-Fusion \\
         --genome_lib_dir ${reference} \\
         ${option}\\
@@ -341,6 +357,17 @@ process star_fusion{
 		--verbose_level 2 
 		
     """
+	*/
+	"""
+	 STAR-Fusion \\
+        --genome_lib_dir ${reference} \\
+		--j ${junction} \\
+        --CPU ${task.cpus} \\
+        --output_dir . \\
+		--FusionInspector validate  \\
+		--verbose_level 2 
+	"""
+		
 }
 
 process fusioncatcher{
