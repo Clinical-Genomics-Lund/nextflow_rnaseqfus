@@ -11,10 +11,10 @@ From:nfcore/base
 	export PERL5LIB=/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2
 	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2/x86_64-linux-thread-multi/
 	export PERL5LIB=$PERL5LIB:/opt/bin/
+	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS-STARFUS/lib/site_perl/5.26.2
+	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS-STARFUS/lib/site_perl/5.26.2/x86_64-linux-thread-multi
 	export PATH=/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-1:$PATH
-	#export LD_LIBRARY_PATH=/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/lib:$LD_LIBRARY_PATH
 	export PATH=/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/bin:$PATH	
-
 
 
 %files
@@ -22,15 +22,13 @@ From:nfcore/base
 	environment_starfusion.yml /
 	../bin/ /opt
 	../bin/ /
-	
-	
+		
 %post
 	rm -rf /var/lib/apt/lists/*
 	apt -y clean
 	apt -y update
         apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
 	apt-get install -y libopenblas-dev r-base-core libcurl4-openssl-dev libopenmpi-dev openmpi-bin openmpi-common openmpi-doc 
-
 
 	mkdir /opt/fusioncatcher
 	cd /opt/fusioncatcher 
@@ -39,7 +37,7 @@ From:nfcore/base
 
 	/opt/conda/bin/conda env create -f /environment.yml
 	ln -s /opt/bin/CMD /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2	
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/pip install RSeQC
+
 	/opt/conda/bin/conda env create -f /environment_starfusion.yml
  
 	 
