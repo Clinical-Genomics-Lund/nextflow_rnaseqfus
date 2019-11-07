@@ -23,7 +23,8 @@ params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_gen
 
 // Quantificatin files
 decoys_file ="/data/bnf/dev/sima/rnaSeq_fus/data/salmon/decoys.txt"
-params.ref_salmon = "/data/bnf/dev/sima/rnaSeq_fus/data/salmon/gentrome.fa" //has to be transcriptome
+params.ref_salmon = "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/Homo_sapiens.GRCh38.cdna.all.fa"
+//"/data/bnf/dev/sima/rnaSeq_fus/data/salmon/gentrome.fa" //has to be transcriptome
 
 //Provider  files
 params.ref_bed = "/data/bnf/sw/provider/HPA_1000G_final_38.bed"
@@ -44,7 +45,7 @@ genebody_ch = Channel.fromPath(params.genebody)
 
 /* Set running tool flags */
 /* QC tools */
-params.qc = true
+params.qc = false
 params.star_inedx = false
 params.star = true
 params.fastqscreen = false
@@ -52,11 +53,11 @@ params.fastqscreen_genomes = true //This flag shows that if config file for fast
 params.qualimap = false
 params.bodyCov = true
 params.provider =false
-params.combine = true
+params.combine = false
 
 /* Fusion identification tools */
-params.fusion = true
-params.star_fusion = true
+params.fusion = false
+params.star_fusion = false
 params.fusioncatcher = false
 params.jaffa = false
 
@@ -74,7 +75,9 @@ Channel
         .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
         .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star; read_files_star_align; read_files_salmon; read_files_fastqscreen}
 	
-//Channel.fromPath(params.genome_fasta).set{genome_fasta_ch}
+Channel
+	.fromPath(params.genome_fasta)
+	.into{genome_fasta_ch; genomeRef_salmon}
 		
 
 genome_index = Channel.fromPath(params.ref_genome_dir )
@@ -103,7 +106,7 @@ fusionCatcher_ref = Channel
 			.ifEmpty { exit 1, "Fusioncatcher reference directory not found!" }
 
 
-ref_file_salmon = Channel 
+transcriptome_ref= Channel 
 			.fromPath(params.ref_salmon)
 			.ifEmpty { exit 1, " Reference file/directory not found!" }
 
@@ -155,7 +158,7 @@ process star_alignment{
 		set file("Log.final.out"), file ('*.bam') into star_aligned
 		file "SJ.out.tab"
 		file "Log.out" into star_log
-		file "Aligned.sortedByCoord.out.bam" into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
+		file "Aligned.sortedByCoord.out.bam" into aligned_bam, star_sort_bam ,star_sort_bam_1 , star_sort_bam_2
 		file "Log.final.out" into star_logFinalOut_ch
 		
 
@@ -268,7 +271,8 @@ process rseqc_genebody_coverage{
 	input :
 	
 		file (ref_bed) from ref_RseQC_ch
-		file (bam_f) from star_sort_bai
+		file (bam_f) from star_sort_bam_1
+		file (bai_f) from star_sort_bai
 		//star_sort_bam_1
 	
 	output:
@@ -277,7 +281,7 @@ process rseqc_genebody_coverage{
 	
 	script:
 	"""
-	geneBody_coverage.py -i ${bam_f} -r ${ref_bed} -o ${smpl_id}
+	geneBody_coverage.py -i ${bam_f},${bai_f}  -r ${ref_bed} -o ${smpl_id}
 	"""
 }
 
@@ -310,7 +314,7 @@ process provider{
 	
 /* Part2 : fusion identification part */
 
-process star_fusion{
+process star_fusion {
 	errorStrategy 'ignore'
     tag "$name"
     cpus 8  
@@ -431,34 +435,49 @@ export PATH=/data/bnf/sw/fuseq/1.1.0/linux/bin:$PATH
 FuSeq -i /data/bnf/ref/fuseq/GRCh37/ -l IU -1 <(gunzip -c  /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY/Data/Intensities/BaseCalls//2845-15_S2_R1_001.fastq.gz ) -2 <(gunzip -c  /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY/Data/Intensities/BaseCalls//2845-15_S2_R2_001.fastq.gz ) -p  4 -g /data/bnf/ref/rsem/GRCh37/Homo_sapiens.GRCh37.75.gtf -o /data/bnf/premap/rnaseq/INV3-2845-15_0.fuseqfolder
 Rscript FuSeq.R  in=/data/bnf/premap/rnaseq/INV3-2845-15_0.fuseq/folder txfasta=/data/bnf/ref/rsem/GRCh37/GRCh37.transcripts.fa sqlite=/data/bnf/ref/fuseq/Homo_sapiens.GRCh37.75.sqlite txanno=/data/bnf/ref/fuseq/GRCh37/Homo_sapiens.GRCh37.75.txAnno.RData \\ params=/data/bnf/sw/fuseq/1.1.0/R/params.txt out=/data/bnf/premap/rnaseq/INV3-2845-15_0.fuseq
  */
+process cleanTranscriptomeVersion{
+        publishDir "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptom_ref/", mode : 'copy'
+        input :
+        file (tr_fasta) from transcriptome_ref
 
+        output:
+        file 'transcripts.cleanversion.fa' into transcriptomeRef_cleanversion_salmon
+        script:
+        """
+        Rscript /opt/fuseq/FuSeq_v1.1.2_linux_x86-64/R/excludeTxVersion.R ${tr_fasta} transcripts.cleanversion.fa
+        """
+}
 /***************************************************/
 /*  Part3 : Expression quantification    */
 /****************************************************/
 
 process create_refIndex {
 	cpus = 8
-	publishDir "${params.outdir}/salmon_ref_Index", mode:'copy'
+	publishDir "${params.outdir}/", mode:'copy'
 
 	when:
 		params.quant 
 
 	input:
-		file (ref) from ref_file_salmon 
-    	file (decoys) from decoys_file              
+		file (ref_genome_fasta) from genomeRef_salmon
+		file (transcriptome_fasta) from transcriptomeRef_cleanversion_salmon 
+    	            
 
 	output:
-		file 'ref_index' into ref_index_ch
+		file 'salmon_index' into salmon_index_ch
 
 	script:
 	"""
-	salmon  index  --threads 8  -t $ref -d $decoys -i ref_index
+	grep "^>" <(zcat ${ref_genome_fasta}) | cut -d " " -f 1 > decoys.txt
+	sed -i -e 's/>//g' decoys.txt
+	cat ${transcriptome_fasta} ${ref_genome_fasta} > gentrome.fa.gz
+	salmon index --threads 12 -t gentrome.fa.gz -d decoys.txt  -i salmon_index --gencode
 	"""  
 	}
 
 process quant{
 	tag "$name"
-	publishDir "${params.outdir}/${name}/quant", mode:'copy'
+	publishDir "${params.outdir}/${name}", mode:'copy'
 	cpus = 8
 
 	when:
@@ -466,7 +485,7 @@ process quant{
 
 	input:
 		set val(name), file (reads) from read_files_salmon
-		file (index) from ref_index_ch	
+		file (index) from salmon_index_ch
 
 	output:
 		file 'quant'  into transcripts_quant_ch
@@ -476,16 +495,21 @@ process quant{
 	script:
 
 	"""
-	salmon quant --threads $task.cpus -i $index -l A -1 ${reads[0]} -2 ${reads[1]} --validateMappings -o 'quant'
+	salmon quant --threads ${task.cpus} -i ${index} -l A -1 ${reads[0]} -2 ${reads[1]} --validateMappings -o quant
+
 	"""
 }
 
-/*
+
 process extract_expression {
-	errorStrategy 'ignore'
+	//errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/quant", mode:'copy'
+
 	input:
 	file (quants) from quant_ch_extract
+
+	when:
+		params.quant
 
 	output:
 	file "*" into salmon_expr_ch
@@ -496,7 +520,7 @@ process extract_expression {
 	"""
 
 }
-*/
+
 
 
 /* Part 4: Post processing */  
