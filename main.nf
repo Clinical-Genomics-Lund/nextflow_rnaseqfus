@@ -22,7 +22,7 @@ params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_gen
 
 
 // Quantificatin files
-decoys_file ="/data/bnf/dev/sima/rnaSeq_fus/data/salmon/decoys.txt"
+//decoys_file ="/data/bnf/dev/sima/rnaSeq_fus/data/salmon/decoys.txt"
 params.ref_salmon = "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/Homo_sapiens.GRCh38.cdna.all.fa"
 //"/data/bnf/dev/sima/rnaSeq_fus/data/salmon/gentrome.fa" //has to be transcriptome
 
@@ -179,7 +179,7 @@ process SamBamBa {
 	tag "$smpl_id"
 	publishDir "${params.outdir}/${smpl_id}/star", mode: 'copy'
 	when:
-		params.qc 
+		params.qc || params.star
 	input:
 		file (reads_bam) from aligned_bam
 	
@@ -281,7 +281,7 @@ process rseqc_genebody_coverage{
 	
 	script:
 	"""
-	geneBody_coverage.py -i ${bam_f},${bai_f}  -r ${ref_bed} -o ${smpl_id}
+	geneBody_coverage.py -i ${bam_f}  -r ${ref_bed} -o ${smpl_id}
 	"""
 }
 
