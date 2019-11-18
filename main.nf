@@ -1,71 +1,61 @@
 #!/usr/bin/dev nextflow
 
-/* Input files */ 
+//Input files  
 params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
-
-//params.reads = "/data/NextSeq2/180815_NB501699_0062_AH73F5AFXY/Data/Intensities/BaseCalls//2845-15_S2_R{1,2}_001.fastq.gz"
-//smpl_id = '2845-15_S2_R' 
-
 params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R{1,2}_001.fastq.gz"
 smpl_id = 'ALL354A185_122-59112_S5_R'
 
-params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/Homo_sapiens.GRCh38.dna_sm.primary_assembly.fa" //fasta file from ensembl
+params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/Homo_sapiens.GRCh38.dna.primary_assembly.fa" //fasta file from ensembl
 params.genome_gtf = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/gtf/Homo_sapiens.GRCh38.98.gtf" //fasta file from ensembl
+params.ref_genome_dir = "/data/bnf/dev/sima/rnaSeq_fus/results/star_refGenome_index/star_ref_index" //is used for star alignment
 
-params.ref_genome_dir = "/data/bnf/dev/sima/rnaSeq_fus/results/star_refGenome_index/star_ref_index" 
-
-/* fastqscreen genome config file */
+// fastqscreen genome config file 
 params.genome_conf = "/data/bnf/dev/sima/rnaSeq_fus/data/fastqScreen/FastQ_Screen_Genomes/fastq_screen.conf"
 
-params.fusionCatcher_ref= "/data/bnf/dev/sima/rnaSeq_fus/data/fusioncatcher/human_v95"
+params.fusionCatcher_ref= "/data/bnf/dev/sima/rnaSeq_fus/data/fusioncatcher/human_v98"
 params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_genome_lib_build_dir"
 
-
 // Quantificatin files
-//decoys_file ="/data/bnf/dev/sima/rnaSeq_fus/data/salmon/decoys.txt"
 params.ref_salmon = "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/Homo_sapiens.GRCh38.cdna.all.fa"
-//"/data/bnf/dev/sima/rnaSeq_fus/data/salmon/gentrome.fa" //has to be transcriptome
 
 //Provider  files
 params.ref_bed = "/data/bnf/sw/provider/HPA_1000G_final_38.bed"
 params.ref_bedXy= "/data/bnf/sw/provider/xy_38.bed"
 
 
-
 //BodyCov
-//params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.nochr.bed"
 params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.bed"
 
 //jaffa
 jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
 
-params.genebody= "/data/bnf/dev/sima/rnaSeq_fus/results/ALL354A185_122-59112_S5_R/qc/genebody_cov/test3.geneBodyCoverage.txt"
 
-genebody_ch = Channel.fromPath(params.genebody)
 
-/* Set running tool flags */
-/* QC tools */
+// Set running tool flags 
+// QC tools
 params.qc = false
 params.star_inedx = false
-params.star = true
-params.fastqscreen = false
+params.star = false
+params.fastqscreen = true
 params.fastqscreen_genomes = true //This flag shows that if config file for fastqscreen already exists or not. 
 params.qualimap = false
-params.bodyCov = true
+params.bodyCov = false
 params.provider =false
 params.combine = false
 
-/* Fusion identification tools */
+// Fusion identification tools 
 params.fusion = false
-params.star_fusion = false
+params.star_fusion = true
 params.fusioncatcher = false
 params.jaffa = false
 
-/* Reads quantification tool */
-params.quant = true
+// Reads quantification tool 
+params.quant = false
 
-/* Other flags */
+//Other flags 
 params.singleEnd= false
+
+
 
 /* Define channels */
 
@@ -86,7 +76,7 @@ genome_index = Channel.fromPath(params.ref_genome_dir )
 
 Channel
 	.fromPath(params.genome_gtf)
-	.into{gtf_star_index;gtf38_qualimap}
+	.into{gtf_star_index; gtf38_qualimap}
 
 
 Channel.fromPath(params.ref_rseqc_bed).set{ref_RseQC_ch} 
@@ -202,7 +192,7 @@ if (params.fastqscreen_genomes) {
 else {
 	process fastqscreen_getGenome{ 
 		
-		publishDir "/data/bnf/dev/sima/rnaSeq_fus/data/fastqScreen", mode: 'copy'
+		publishDir "/data/bnf/dev/sima/rnaSeq_fus/data", mode: 'copy'
 		
 		output :
 		file "*" into output_ch
@@ -214,8 +204,8 @@ else {
 	}
 
 }
-process fastqscreen{ 
-	errorStrategy 'ignore'
+process fastqscreen { 
+	//errorStrategy 'ignore'
 	cpus = 8
 	publishDir "${params.outdir}/${name}/qc/fastqscreen" , mode :'copy'
 	tag "$name"
@@ -230,7 +220,7 @@ process fastqscreen{
 
 	script:
 	"""
-	fastq_screen --conf $config --aligner bowtie2 --force ${reads[0]}   
+	fastq_screen --conf $config --aligner bowtie2 --force ${reads[0]} ${reads[1]}
 	"""
 }
 
@@ -256,9 +246,7 @@ process qualimap {
 	export JAVA_OPTS='-Djava.io.tmpdir=/data/tmp'
 	qualimap --java-mem-size=12G rnaseq -bam ${bam_f} -gtf ${gtf_qualimap} -pe -outdir . 
 	"""
-
 }
-
 	
 process rseqc_genebody_coverage{
 	tag "$smpl_id"
@@ -281,7 +269,7 @@ process rseqc_genebody_coverage{
 	
 	script:
 	"""
-	geneBody_coverage.py -i ${bam_f}  -r ${ref_bed} -o ${smpl_id}
+	geneBody_coverage.py -i ${bam_f} -r ${ref_bed} -o ${smpl_id}
 	"""
 }
 
@@ -342,23 +330,26 @@ process star_fusion {
     ${option} \\
     --CPU ${task.cpus} \\
     --output_dir . \\
-	--verbose_level 2 
+	--verbose_level 2 \\
+	--FusionInspector validate \\
+	--tmpdir /data/bnf/tmp
     """
 	/*
 	"""
-	 STAR-Fusion \\
-        --genome_lib_dir ${reference} \\
+	STAR-Fusion \\
+    --genome_lib_dir ${reference} \\
 	--J ${junction} \\
-        --CPU ${task.cpus} \\
-        --output_dir . \\
+    --CPU ${task.cpus} \\
+    --output_dir . \\
 	--FusionInspector validate  \\
 	--verbose_level 2 
 	"""
  */		
 }
 
+
 process fusioncatcher{
-    //errorStrategy 'ignore'
+    errorStrategy 'ignore'
     tag "$name"
     cpus 8 
     publishDir "${params.outdir}/${name}/fusion/FusionCatcher", mode: 'copy'
@@ -380,7 +371,7 @@ process fusioncatcher{
     option = params.singleEnd ? reads[0] : "${reads[0]},${reads[1]}"
     //def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     """
-   	fusioncatcher -d ${data_dir} -i ${option}  --threads ${task.cpus} -o . 
+   	fusioncatcher.py  -d ${data_dir} -i ${option}  --threads ${task.cpus} -o . 
     """
 }
 
@@ -436,7 +427,8 @@ FuSeq -i /data/bnf/ref/fuseq/GRCh37/ -l IU -1 <(gunzip -c  /data/NextSeq2/180815
 Rscript FuSeq.R  in=/data/bnf/premap/rnaseq/INV3-2845-15_0.fuseq/folder txfasta=/data/bnf/ref/rsem/GRCh37/GRCh37.transcripts.fa sqlite=/data/bnf/ref/fuseq/Homo_sapiens.GRCh37.75.sqlite txanno=/data/bnf/ref/fuseq/GRCh37/Homo_sapiens.GRCh37.75.txAnno.RData \\ params=/data/bnf/sw/fuseq/1.1.0/R/params.txt out=/data/bnf/premap/rnaseq/INV3-2845-15_0.fuseq
  */
 process cleanTranscriptomeVersion{
-        publishDir "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptom_ref/", mode : 'copy'
+        publishDir "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/", mode : 'copy'
+		errorStrategy 'ignore'
         input :
         file (tr_fasta) from transcriptome_ref
 
@@ -452,8 +444,9 @@ process cleanTranscriptomeVersion{
 /****************************************************/
 
 process create_refIndex {
+	errorStrategy 'ignore'
 	cpus = 8
-	publishDir "${params.outdir}/", mode:'copy'
+	publishDir "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/", mode:'copy'
 
 	when:
 		params.quant 
@@ -476,6 +469,7 @@ process create_refIndex {
 	}
 
 process quant{
+	errorStrategy 'ignore'
 	tag "$name"
 	publishDir "${params.outdir}/${name}", mode:'copy'
 	cpus = 8
@@ -502,7 +496,7 @@ process quant{
 
 
 process extract_expression {
-	//errorStrategy 'ignore'
+	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/quant", mode:'copy'
 
 	input:
@@ -555,7 +549,7 @@ process postaln_qc_rna {
 	input:
 		file (star_final) from star_logFinalOut_ch
 		file (fusion) from final_list_fusionCatcher_ch
-		file (geneCov) from genebody_ch
+		file (geneCov) from gene_bodyCov_ch_
 		file (provIder) from provider_output_ch
 		file (flendist) from flendist_ch
 	
@@ -569,9 +563,6 @@ process postaln_qc_rna {
 	postaln_qc_rna.R  --star ${star_final} --fusion ${fusion} --id '${smpl_id}'  --provider ${provIder} --flendist ${flendist} --genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
 	"""
 } 
-
-
-
 
 
 /* Part 5 :  Prepare for and upload to Coyote */
@@ -603,7 +594,7 @@ process aggregate_fusion{
 
 /*
 //Register to CMD 
-process register_to_CMD {
+process register_to_CMD{
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 	input:
 	file (final_QC_file) from final_QC
@@ -617,7 +608,7 @@ process register_to_CMD {
 */
 
 /*
-process import_o_Coyote{
+process import_to_Coyote{
 	input:
 	file (fusion_agg) from agg_vcf_ch
 	file 
