@@ -4,143 +4,71 @@
 
 smpl_id = 'ALL354A185_122-59112_S5_R'
 jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
-
-/*
-//Input files  
-params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
+params.reads = file(params.reads)
 params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R{1,2}_001.fastq.gz"
-smpl_id = 'ALL354A185_122-59112_S5_R'
 
-params.genome_fasta = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/Homo_sapiens.GRCh38.dna.primary_assembly.fa" //fasta file from ensembl
-params.genome_gtf = "/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/gtf/Homo_sapiens.GRCh38.98.gtf" //fasta file from ensembl
-params.ref_genome_dir = "/data/bnf/dev/sima/rnaSeq_fus/results/star_refGenome_index/star_ref_index" //is used for star alignment
-
-// fastqscreen genome config file 
-params.genome_conf = "/data/bnf/dev/sima/rnaSeq_fus/data/fastqScreen/FastQ_Screen_Genomes/fastq_screen.conf"
-
-params.fusionCatcher_ref= "/data/bnf/dev/sima/rnaSeq_fus/data/fusioncatcher/human_v98"
-params.star_fusion_ref = "/data/bnf/dev/sima/rnaSeq_fus/data/starFusion/ctat_genome_lib_build_dir"
-
-// Quantificatin files
-params.ref_salmon = "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/Homo_sapiens.GRCh38.cdna.all.fa"
-
-//Provider  files
-params.ref_bed = "/data/bnf/sw/provider/HPA_1000G_final_38.bed"
-params.ref_bedXy= "/data/bnf/sw/provider/xy_38.bed"
-
-
-//BodyCov
-params.ref_rseqc_bed = "/data/bnf/dev/sima/rnaSeq_fus/data/RseQC/Homo_sapiens.GRCh38.79.bed"
-
-//jaffa
-jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
-
-
-
-// Set running tool flags 
-// QC tools
-params.qc = false
-params.star_inedx = false
-params.star = false
-params.fastqscreen = false
-params.fastqscreen_genomes = true //This flag shows that if config file for fastqscreen already exists or not. 
-params.qualimap = false
-params.bodyCov = false
-params.provider =false
-params.combine = false
-
-// Fusion identification tools 
-params.fusion = false
-params.star_fusion = true
-params.fusioncatcher = false
-params.jaffa = false
-
-// Reads quantification tool 
-params.quant = false
-
-//Other flags 
-params.singleEnd= false
-
-*/
 
 /* Define channels */
-
-
 Channel
-        .fromFilePairs( params.reads )
-        .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
-        .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star; read_files_star_align; read_files_salmon; read_files_fastqscreen}
-	
-Channel
-	.fromPath(params.genome_fasta)
-	.into{genome_fasta_ch; genomeRef_salmon}
+    .fromFilePairs(params.reads)
+    .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
+    .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star_align; read_files_salmon; read_files_fastqscreen}
+
 		
-
-genome_index = Channel.fromPath(params.ref_genome_dir )
-			.ifEmpty { exit 1, "genome reference directory not found!" }
+Channel
+	.fromPath(params.ref_genome_dir)
+	.ifEmpty{ exit 1, "genome reference index directory not found!" }
+	.set{genome_index}
 
 
 Channel
 	.fromPath(params.genome_gtf)
-	.into{gtf_star_index; gtf38_qualimap}
+	.ifEmpty { exit 1, " Qualimap error: annotation file not found!" }
+	.set{gtf38_qualimap}
 
 
-Channel.fromPath(params.ref_rseqc_bed).set{ref_RseQC_ch} 
+Channel
+	.fromPath(params.ref_rseqc_bed)
+	.ifEmpty { exit 1, "RseQC bed file not found!" }
+	.set{ref_RseQC_ch} 
 
 //Provider channels
-Channel.fromPath(params.ref_bed).set{bed_ch}
-Channel.fromPath(params.ref_bedXy).set{bedXy_ch}
+Channel
+	.fromPath(params.ref_bed)
+	.ifEmpty { exit 1, "provider ref error : ref_bed reference file not found!" }
+	.set{bed_ch}
 
+Channel
+	.fromPath(params.ref_bedXy)
+	.ifEmpty { exit 1, "provider ref error : ref_bedXY reference file not found!" }
+	.set{bedXy_ch}
 
-star_fusion_ref = Channel
-            .fromPath(params.star_fusion_ref)
-            .ifEmpty { exit 1, "Star-Fusion reference directory not found!" }
+Channel
+    .fromPath(params.star_fusion_ref)
+    .ifEmpty { exit 1, "Star-Fusion reference directory not found!" }
+	.set{star_fusion_ref}
 			
+Channel
+	.fromPath(params.fusionCatcher_ref)
+	.ifEmpty { exit 1, "Fusioncatcher reference directory/file not found!" }
+	.set{fusionCatcher_ref}
 
-fusionCatcher_ref = Channel
-			.fromPath(params.fusionCatcher_ref)
-			.ifEmpty { exit 1, "Fusioncatcher reference directory not found!" }
+Channel
+	.fromPath(params.salmon_index_dir)
+	.ifEmpty { exit 1, " Transcriptome index file not found: ${params.salmon_index}"}
+	.set{salmon_index_ch}
 
-
-transcriptome_ref= Channel 
-			.fromPath(params.ref_salmon)
-			.ifEmpty { exit 1, " Reference file/directory not found!" }
+Channel
+    .fromPath(params.genome_conf)
+    .ifEmpty { exit 1, "Fastqscreen genome config file not found: ${params.genome_conf}"}
+    .set{fastq_screen_config_ch}
 
 
 /* Part1: QC */
-
-/*
-process build_star_index {
-
-	publishDir "${params.outdir}/star_refGenome_index", mode:'copy'
-	cpus = 8
-	when:
-	params.qc || params.star_inedx
-	input :
-	file (fasta) from  genome_fasta_ch
-	file (gtf) from gtf_star_index 
-
-
-	output:
-	file "star_ref_index" into star_index
-	
-	script:
-	"""
-	mkdir star_ref_index
-	STAR \\
-		--runMode genomeGenerate \\
-		--runThreadN ${task.cpus} \\
-		--sjdbGTFfile ${gtf} \\
-		--genomeDir star_ref_index/ \\
-		--genomeFastaFiles ${fasta} 
-	"""	
-}
-*/
-
 process star_alignment{
-	
-	tag "$name"
-	publishDir "${params.outdir}/${name}/star", mode :'copy'
+	errorStrategy 'ignore'
+	tag "${smpl_id}"
+	publishDir "${params.outdir}/${smpl_id}/star", mode :'copy'
 	cpus = 8
 
 	when:
@@ -172,7 +100,7 @@ process star_alignment{
 }
 
 process SamBamBa {
-	tag "$smpl_id"
+	tag "${smpl_id}"
 	publishDir "${params.outdir}/${smpl_id}/star", mode: 'copy'
 	when:
 		params.qc || params.star
@@ -189,32 +117,11 @@ process SamBamBa {
 }
 
 
-if (params.fastqscreen_genomes) {
-    Channel
-        .fromPath(params.genome_conf)
-        .ifEmpty { exit 1, "Fastqscreen genome config file not found: ${params.genome_conf}" }
-        .set {fastq_screen_config_ch}
-	} 
-else {
-	process fastqscreen_getGenome{ 
-		
-		publishDir "/data/bnf/dev/sima/rnaSeq_fus/data", mode: 'copy'
-		
-		output :
-		file "*" into output_ch
-		file "fastq_screen.conf" into fastq_screen_config_ch
-		script:
-		"""
-		fastq_screen --get_genomes
-		"""
-	}
-
-}
 process fastqscreen { 
-	//errorStrategy 'ignore'
+	errorStrategy 'ignore'
 	cpus = 8
-	publishDir "${params.outdir}/${name}/qc/fastqscreen" , mode :'copy'
-	tag "$name"
+	publishDir "${params.outdir}/${smpl_id}/qc/fastqscreen" , mode :'copy'
+	tag "${smpl_id}"
 	when:
 	params.fastqscreen || params.qc 
 
@@ -226,13 +133,13 @@ process fastqscreen {
 
 	script:
 	"""
-	fastq_screen --conf $config --aligner bowtie2 --force ${reads[0]} ${reads[1]}
+	fastq_screen --conf ${config} --aligner bowtie2 --force ${reads[0]} ${reads[1]}
 	"""
 }
 
 
 process qualimap {
-	tag  "$smpl_id"
+	tag  "${smpl_id}"
 	publishDir "${params.outdir}/${smpl_id}/qc/qualimap", mode :'copy'
 	errorStrategy 'ignore'
 
@@ -255,7 +162,7 @@ process qualimap {
 }
 	
 process rseqc_genebody_coverage{
-	tag "$smpl_id"
+	tag "${smpl_id}"
 	publishDir "${params.outdir}/${smpl_id}/qc/genebody_cov", mode:'copy'
 	errorStrategy 'ignore'
 
@@ -281,8 +188,7 @@ process rseqc_genebody_coverage{
 
 
 process provider{
-
-	tag "$smpl_id"
+	tag "${smpl_id}"
 	publishDir "${params.outdir}/${smpl_id}/qc/provider" , mode:'copy'
 	errorStrategy 'ignore'
 
@@ -309,10 +215,11 @@ process provider{
 /* Part2 : fusion identification part */
 
 process star_fusion {
-	//errorStrategy 'ignore'
-    tag "$name"
+	errorStrategy 'ignore'
+    tag "${smpl_id}"
     cpus 16  
-    publishDir "${params.outdir}/${name}/fusion/StarFusion/", mode: 'copy'
+	memory =  60.GB
+    publishDir "${params.outdir}/${smpl_id}/fusion/StarFusion/", mode: 'copy'
 
     when:
     params.star_fusion || params.fusion 
@@ -340,25 +247,14 @@ process star_fusion {
 	--FusionInspector validate \\
 	--tmpdir /data/bnf/tmp
     """
-	/*
-	"""
-	STAR-Fusion \\
-    --genome_lib_dir ${reference} \\
-	--J ${junction} \\
-    --CPU ${task.cpus} \\
-    --output_dir . \\
-	--FusionInspector validate  \\
-	--verbose_level 2 
-	"""
- */		
+	
 }
-
 
 process fusioncatcher{
     errorStrategy 'ignore'
-    tag "$name"
+    tag "${smpl_id}"
     cpus 8 
-    publishDir "${params.outdir}/${name}/fusion/FusionCatcher", mode: 'copy'
+    publishDir "${params.outdir}/${smpl_id}/fusion/FusionCatcher", mode: 'copy'
 
     when: 
 	params.fusioncatcher || params.fusion
@@ -399,9 +295,9 @@ process filter_aml_fusions {
 }
 
 process jaffa {
-    tag "$name"
+    tag "${smpl_id}"
 	errorStrategy 'ignore'
-    publishDir  "${params.outdir}/${name}/fusion/jaffa", mode: 'copy'
+    publishDir  "${params.outdir}/${smpl_id}/fusion/jaffa", mode: 'copy'
 
     when:
     	params.jaffa || params.fusion
@@ -419,65 +315,16 @@ process jaffa {
    	bpipe run  -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  ${jaffa_file}  ${reads[0]} ${reads[1]}  
    	"""
 }
- /* 
-process Fuseq{
-tag "$name"
-errorStrategy 'ignore'
-publishDir  "${params.outdir}/${name}/fusion/Fuseq", mode: 'copy'
 
-script:
-"""
-export LD_LIBRARY_PATH=/data/bnf/sw/fuseq/1.1.0/linux/lib:$LD_LIBRARY_PATH
-export PATH=/data/bnf/sw/fuseq/1.1.0/linux/bin:$PATH
-FuSeq -i /data/bnf/ref/fuseq/GRCh37/ -l IU -1 <(gunzip -c  /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY/Data/Intensities/BaseCalls//2845-15_S2_R1_001.fastq.gz ) -2 <(gunzip -c  /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY/Data/Intensities/BaseCalls//2845-15_S2_R2_001.fastq.gz ) -p  4 -g /data/bnf/ref/rsem/GRCh37/Homo_sapiens.GRCh37.75.gtf -o /data/bnf/premap/rnaseq/INV3-2845-15_0.fuseqfolder
-Rscript FuSeq.R  in=/data/bnf/premap/rnaseq/INV3-2845-15_0.fuseq/folder txfasta=/data/bnf/ref/rsem/GRCh37/GRCh37.transcripts.fa sqlite=/data/bnf/ref/fuseq/Homo_sapiens.GRCh37.75.sqlite txanno=/data/bnf/ref/fuseq/GRCh37/Homo_sapiens.GRCh37.75.txAnno.RData \\ params=/data/bnf/sw/fuseq/1.1.0/R/params.txt out=/data/bnf/premap/rnaseq/INV3-2845-15_0.fuseq
- */
-process cleanTranscriptomeVersion{
-        publishDir "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/", mode : 'copy'
-		errorStrategy 'ignore'
-        input :
-        file (tr_fasta) from transcriptome_ref
 
-        output:
-        file 'transcripts.cleanversion.fa' into transcriptomeRef_cleanversion_salmon
-        script:
-        """
-        Rscript /opt/fuseq/FuSeq_v1.1.2_linux_x86-64/R/excludeTxVersion.R ${tr_fasta} transcripts.cleanversion.fa
-        """
-}
 /***************************************************/
 /*  Part3 : Expression quantification    */
 /****************************************************/
 
-process create_refIndex {
-	errorStrategy 'ignore'
-	cpus = 8
-	publishDir "/data/bnf/dev/sima/rnaSeq_fus/data/transcriptome_ref/", mode:'copy'
-
-	when:
-		params.quant 
-
-	input:
-		file (ref_genome_fasta) from genomeRef_salmon
-		file (transcriptome_fasta) from transcriptomeRef_cleanversion_salmon 
-    	            
-
-	output:
-		file 'salmon_index' into salmon_index_ch
-
-	script:
-	"""
-	grep "^>" <(zcat ${ref_genome_fasta}) | cut -d " " -f 1 > decoys.txt
-	sed -i -e 's/>//g' decoys.txt
-	cat ${transcriptome_fasta} ${ref_genome_fasta} > gentrome.fa.gz
-	salmon index --threads 12 -t gentrome.fa.gz -d decoys.txt  -i salmon_index --gencode
-	"""  
-	}
-
 process quant{
 	errorStrategy 'ignore'
-	tag "$name"
-	publishDir "${params.outdir}/${name}", mode:'copy'
+	tag "${smpl_id}"
+	publishDir "${params.outdir}/${smpl_id}", mode:'copy'
 	cpus = 8
 
 	when:
@@ -522,11 +369,14 @@ process extract_expression {
 }
 
 
-
-/* Part 4: Post processing */  
+/***************************************************/
+/*  Part 4: Post processing                         */
+/****************************************************/
+ 
 
 // Create fusion report  
 process create_fusion_report{
+
 	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
 
@@ -623,5 +473,4 @@ import_fusion_to_coyote.pl --classification /data/bnf/postmap/rnaseq/6192-11.STA
 */ 
 
 
-//env PERL5LIB= PERL_LOCAL_LIB_ROOT= cpan
 
