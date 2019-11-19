@@ -1,5 +1,11 @@
 #!/usr/bin/dev nextflow
 
+
+
+smpl_id = 'ALL354A185_122-59112_S5_R'
+jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
+
+/*
 //Input files  
 params.outdir = "/data/bnf/dev/sima/rnaSeq_fus/results"
 params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R{1,2}_001.fastq.gz"
@@ -36,7 +42,7 @@ jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groo
 params.qc = false
 params.star_inedx = false
 params.star = false
-params.fastqscreen = true
+params.fastqscreen = false
 params.fastqscreen_genomes = true //This flag shows that if config file for fastqscreen already exists or not. 
 params.qualimap = false
 params.bodyCov = false
@@ -55,7 +61,7 @@ params.quant = false
 //Other flags 
 params.singleEnd= false
 
-
+*/
 
 /* Define channels */
 
@@ -303,9 +309,9 @@ process provider{
 /* Part2 : fusion identification part */
 
 process star_fusion {
-	errorStrategy 'ignore'
+	//errorStrategy 'ignore'
     tag "$name"
-    cpus 8  
+    cpus 16  
     publishDir "${params.outdir}/${name}/fusion/StarFusion/", mode: 'copy'
 
     when:
