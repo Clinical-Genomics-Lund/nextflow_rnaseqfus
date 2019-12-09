@@ -4,8 +4,8 @@
 
 smpl_id = 'ALL354A185_122-59112_S5_R'
 jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
-params.reads = file(params.reads)
-params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R{1,2}_001.fastq.gz"
+//params.reads = file(params.reads)
+//params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R{1,2}_001.fastq.gz"
 
 
 /* Define channels */
@@ -68,7 +68,7 @@ Channel
 process star_alignment{
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/${smpl_id}/star", mode :'copy'
+	publishDir "${params.outdir}/star", mode :'copy'
 	cpus = 8
 
 	when:
@@ -312,7 +312,7 @@ process jaffa {
     script:
 
    	"""
-   	bpipe run  -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  ${jaffa_file}  ${reads[0]} ${reads[1]}  
+   	bpipe run  -p  genome=hg38 -p refBase="${params.jaffa_base}"  ${jaffa_file}  ${reads[0]} ${reads[1]}  
    	"""
 }
 
