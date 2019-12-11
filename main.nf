@@ -2,17 +2,17 @@
 
 
 
-smpl_id = 'ALL354A185_122-59112_S5_R'
+//smpl_id = 'ALL354A185_122-59112_S5_R'
 jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
 //params.reads = file(params.reads)
 //params.reads = "/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R{1,2}_001.fastq.gz"
 
 
 /* Define channels */
-Channel
-    .fromFilePairs(params.reads)
-    .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
-    .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star_align; read_files_salmon; read_files_fastqscreen}
+//Channel
+//    .fromFilePairs(params.reads)
+//    .ifEmpty { error "Cannot find any reads matching: ${params.reads}" }
+//   .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star_align; read_files_salmon; read_files_fastqscreen}
 
 		
 Channel
@@ -64,51 +64,65 @@ Channel
     .set{fastq_screen_config_ch}
 
 
+Channel
+    .fromPath(params.csv)
+    .splitCsv(header:true)
+    .map{ row-> tuple(row.clarity_sample_id, file(row.read1), file(row.read2)) }
+    .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star_align; read_files_salmon; read_files_fastqscreen}
+
+
+
 /* Part1: QC */
 process star_alignment{
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/star", mode :'copy'
+	publishDir "${params.outdir}/bam", mode :'copy'
 	cpus = 8
 
 	when:
 		params.qc || params.star
 
 	input:
-		set val(name), file (reads) from read_files_star_align
+		set val(smpl_id) , file(read1), file(read2) from read_files_star_align
 		file (index_files) from  genome_index  //star_index
 	
 	output:
-		set file("Log.final.out"), file ('*.bam') into star_aligned
-		file "SJ.out.tab"
-		file "Log.out" into star_log
-		file "Aligned.sortedByCoord.out.bam" into aligned_bam, star_sort_bam ,star_sort_bam_1 , star_sort_bam_2
+		//set val(smpl_id), file("Log.final.out"), file ('*.bam') into star_aligned
+		//file "SJ.out.tab"
+		//file "Log.out" into star_log
+	
+		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
 		file "Log.final.out" into star_logFinalOut_ch
+		file "${smpl_id}.Aligned.sortedByCoord.out.bam.bai" into star_sort_bai
 		
 
-	script: 
 
+	script: 
 	"""
 	STAR --genomeDir ${index_files} \\
-	--readFilesIn ${reads} \\
+	--readFilesIn ${read1} ${read2} \\
 	--runThreadN ${task.cpus} \\
 	--outSAMtype BAM SortedByCoordinate \\
 	--readFilesCommand zcat \\
 	--limitBAMsortRAM 10000000000 
+
+	mv Aligned.sortedByCoord.out.bam  ${smpl_id}.Aligned.sortedByCoord.out.bam
+	sambamba index --show-progress -t 8 ${smpl_id}.Aligned.sortedByCoord.out.bam 
+	
 	"""
 	
 }
-
+/*
 process SamBamBa {
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/${smpl_id}/star", mode: 'copy'
+	publishDir "${params.outdir}/bam", mode: 'copy'
 	when:
 		params.qc || params.star
 	input:
 		file (reads_bam) from aligned_bam
 	
 	output:
-		file "Aligned.sortedByCoord.out.bam.bai"  into star_sort_bai
+		file "*"  into star_sort_bai
 
 	script:
 	"""
@@ -116,38 +130,41 @@ process SamBamBa {
 	"""
 }
 
+*/
+
 
 process fastqscreen { 
 	errorStrategy 'ignore'
+	//scratch true
 	cpus = 8
-	publishDir "${params.outdir}/${smpl_id}/qc/fastqscreen" , mode :'copy'
+	publishDir "${params.outdir}/qc/${smpl_id}.fastqscreen" , mode :'copy'
 	tag "${smpl_id}"
 	when:
 	params.fastqscreen || params.qc 
 
 	input:
-	set val(name), file(reads) from read_files_fastqscreen
+	set val(smpl_id), file(read1), file(read2) from read_files_fastqscreen
 	file (config) from fastq_screen_config_ch
 	output:
 	file '*.{html,png,txt}' into fastq_screen_ch
 
 	script:
 	"""
-	fastq_screen --conf ${config} --aligner bowtie2 --force ${reads[0]} ${reads[1]}
+	fastq_screen --conf ${config} --aligner bowtie2 --force ${read1} ${read2}
 	"""
 }
 
 
 process qualimap {
 	tag  "${smpl_id}"
-	publishDir "${params.outdir}/${smpl_id}/qc/qualimap", mode :'copy'
+	publishDir "${params.outdir}/qc", mode :'copy'
 	errorStrategy 'ignore'
 
 	when :
 		params.qc || params.qualimap
 
 	input:
-		file (bam_f) from star_sort_bam
+		set val(smpl_id), file(bam_f) from star_sort_bam
 		file (gtf_qualimap) from gtf38_qualimap
 
 	output:
@@ -163,7 +180,7 @@ process qualimap {
 	
 process rseqc_genebody_coverage{
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/${smpl_id}/qc/genebody_cov", mode:'copy'
+	publishDir "${params.outdir}/qc", mode:'copy'
 	errorStrategy 'ignore'
 
 	when:
@@ -172,12 +189,12 @@ process rseqc_genebody_coverage{
 	input :
 	
 		file (ref_bed) from ref_RseQC_ch
-		file (bam_f) from star_sort_bam_1
+		set val(smpl_id), file(bam_f) from star_sort_bam_1
 		file (bai_f) from star_sort_bai
 		//star_sort_bam_1
 	
 	output:
-		file "${smpl_id}*.pdf" into gene_bodyCov_ch
+		//file "${smpl_id}*.pdf" into gene_bodyCov_ch
 		file "${smpl_id}.geneBodyCoverage.txt" into gene_bodyCov_ch_
 	
 	script:
@@ -189,14 +206,14 @@ process rseqc_genebody_coverage{
 
 process provider{
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/${smpl_id}/qc/provider" , mode:'copy'
+	publishDir "${params.outdir}/qc" , mode:'copy'
 	errorStrategy 'ignore'
 
 	when:
 		params.qc || params.provider
 
 	input:
-		file (bam_f) from star_sort_bam_2
+		set val(smpl_id), file(bam_f) from star_sort_bam_2
 		file (bed_f) from bed_ch
 		file (bedXy_f) from bedXy_ch	
 	
@@ -216,26 +233,27 @@ process provider{
 
 process star_fusion {
 	errorStrategy 'ignore'
+	scratch true
     tag "${smpl_id}"
     cpus 16  
 	memory =  60.GB
-    publishDir "${params.outdir}/${smpl_id}/fusion/StarFusion/", mode: 'copy'
+    publishDir "${params.outdir}/fusion", mode: 'copy'
 
     when:
     params.star_fusion || params.fusion 
 
     input:
-	set val(name), file(reads) from read_files_star_fusion
+	set val(smpl_id) , file(read1), file(read2) from read_files_star_fusion
 	file (reference) from star_fusion_ref
 	//file (junction) from star_junction_ch
 
     output:
-	file '*fusion_predictions.tsv' optional true into star_fusion_agg_ch
-    file '*.{tsv,txt}' into star_fusion_output
+	file '*.tsv' optional true into star_fusion_agg_ch
+    //file '*.{tsv,txt}' into star_fusion_output
 
     script:
     //def avail_mem = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ''
-    option = params.singleEnd ? "--left_fq ${reads[0]}" : "--left_fq ${reads[0]} --right_fq ${reads[1]}"
+    option = params.singleEnd ? "--left_fq ${read1}" : "--left_fq ${read1} --right_fq ${read2}"
     //def extra_params = params.star_fusion_opt ? "${params.star_fusion_opt}" : ''
     """
     STAR-Fusion \\
@@ -254,29 +272,31 @@ process fusioncatcher{
     errorStrategy 'ignore'
     tag "${smpl_id}"
     cpus 8 
-    publishDir "${params.outdir}/${smpl_id}/fusion/FusionCatcher", mode: 'copy'
+    publishDir "${params.outdir}/fusion", mode: 'copy'
 
     when: 
 	params.fusioncatcher || params.fusion
 
     input:
-    set val(name), file(reads) from read_files_fusioncatcher
+    set val(smpl_id) , file(read1), file(read2) from read_files_fusioncatcher
     file (data_dir) from fusionCatcher_ref
 
     output:
-	file 'final-list_candidate-fusion-genes.txt' optional true into fusioncatcher_fusions
-	file 'final-list_candidate-fusion-genes.hg19.txt' into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
-   	file '*.{txt,zip,log}' into fusioncatcher_output
+	//file 'final-list_candidate-fusion-genes.txt' optional true into fusioncatcher_fusions
+	file "${smpl_id}.final-list_candidate-fusion-genes.hg19.txt" into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
+   	file '*.{txt,zip,log}' 
+	file "${smpl_id}.fusioncatcher.xls" into filter_fusion_ch
 
     script:
-
-    option = params.singleEnd ? reads[0] : "${reads[0]},${reads[1]}"
+    option = params.singleEnd ? read1 : "${read1},${read2}"
     //def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     """
-   	fusioncatcher.py  -d ${data_dir} -i ${option}  --threads ${task.cpus} -o . 
+   	fusioncatcher.py  -d ${data_dir} -i ${option}  --threads ${task.cpus} -o .
+	mv  final-list_candidate-fusion-genes.hg19.txt ${smpl_id}.final-list_candidate-fusion-genes.hg19.txt
+	filter_aml_fusions.pl . > ${smpl_id}.fusioncatcher.xls
     """
 }
-
+/*
 process filter_aml_fusions {
 	errorStrategy 'ignore'
 	publishDir "${params.outdir}/${smpl_id}/fusion/FusionCatcher", mode: 'copy'
@@ -293,26 +313,29 @@ process filter_aml_fusions {
 	filter_aml_fusions.pl ${fusioncatcher_files} > ${smpl_id}.fusioncatcher.xls
 	"""
 }
+*/
+
 
 process jaffa {
     tag "${smpl_id}"
 	errorStrategy 'ignore'
-    publishDir  "${params.outdir}/${smpl_id}/fusion/jaffa", mode: 'copy'
+    publishDir  "${params.outdir}/fusion", mode: 'copy'
 
     when:
     	params.jaffa || params.fusion
 
     input:
-    	set val(name), file(reads) from  read_files_jaffa
+    	set val(smpl_id) , file(read1), file(read2) from  read_files_jaffa
 
     output:
-    	file "*.csv" into jaffa_csv_ch
-    	file "*.fasta" into jaffa_fasta_ch 
+    	file "${smpl_id}.jaffa_results.csv" into jaffa_csv_ch
+    	//file "*.fasta" into jaffa_fasta_ch 
     
     script:
 
    	"""
-   	bpipe run  -p  genome=hg38 -p refBase="${params.jaffa_base}"  ${jaffa_file}  ${reads[0]} ${reads[1]}  
+   	bpipe run  -p  genome=hg38 -p refBase="/data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/"  ${jaffa_file}  ${read1} ${read2}
+	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
    	"""
 }
 
@@ -331,18 +354,18 @@ process quant{
 		params.quant 
 
 	input:
-		set val(name), file (reads) from read_files_salmon
+		set val(smpl_id) , file(read1), file(read2) from read_files_salmon
 		file (index) from salmon_index_ch
 
 	output:
-		file 'quant'  into transcripts_quant_ch
-		file 'quant/libParams/flenDist.txt' into flendist_ch
-		file 'quant/quant.sf' into quant_ch, quant_ch_extract
+		
+		set val(smpl_id), file('quant/libParams/flenDist.txt') into flendist_ch
+		set val(smpl_id), file('quant/quant.sf') into quant_ch, quant_ch_extract
 
 	script:
 
 	"""
-	salmon quant --threads ${task.cpus} -i ${index} -l A -1 ${reads[0]} -2 ${reads[1]} --validateMappings -o quant
+	salmon quant --threads ${task.cpus} -i ${index} -l A -1 ${read1} -2 ${read2} --validateMappings -o quant
 
 	"""
 }
@@ -353,7 +376,7 @@ process extract_expression {
 	publishDir "${params.outdir}/${smpl_id}/quant", mode:'copy'
 
 	input:
-	file (quants) from quant_ch_extract
+	set val(smpl_id), file(quants) from quant_ch_extract
 
 	when:
 		params.quant
@@ -378,13 +401,13 @@ process extract_expression {
 process create_fusion_report{
 
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
+	publishDir "${params.outdir}" , mode:'copy'
 
 	input:
-		file (quant) from quant_ch
+		set val(smpl_id), file(quant) from quant_ch
 
 	output:
-		file "${smpl_id}.STAR.fusionreport" into report
+		set val(smpl_id), file("${smpl_id}.STAR.fusionreport") into report
 
 	script:
 	"""
@@ -396,7 +419,7 @@ process create_fusion_report{
 
 /* post alignment */
 process postaln_qc_rna {
-	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
+	publishDir "${params.outdir}" , mode:'copy'
 	errorStrategy 'ignore'
 
 	when:
@@ -426,7 +449,7 @@ process postaln_qc_rna {
 // aggregate fusion files
 process aggregate_fusion{
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}/${smpl_id}/final_results" , mode: 'copy'
+	publishDir "${params.outdir}" , mode: 'copy'
 
 	input:
 		file (fusionCatcher_file) from final_list_fusionCatcher_agg_ch
