@@ -12,6 +12,7 @@ From:nfcore/base
 	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2/x86_64-linux-thread-multi/
 	export PERL5LIB=$PERL5LIB:/opt/bin/
 	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/PerlLib/
+	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/FusionInspector/PerlLib/
 
 	export PATH=/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/bin:$PATH
 	#export LD_LIBRARY_PATH=-"/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/lib":LD_LIBRARY_PATH	
@@ -20,7 +21,7 @@ From:nfcore/base
 %files
         environment.yml /
 #	environment_starfusion.yml /
-	../bin/ /opt
+#	../bin/ /opt
 	../bin/ /
 
 		
