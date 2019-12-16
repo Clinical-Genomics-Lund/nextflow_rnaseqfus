@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 args = commandArgs(trailingOnly=TRUE)
-# In this file the path of refrence file has been changed by Sima. (from local to cluster. Line 70)
+# In this file the path of refrence file has been changed by Sima. (from local to cluster. Line 70, 38)
 
 if(length(args)==0){
   
@@ -34,7 +34,8 @@ gd<-transcripts(edb,return.type="DataFrame")
 # 
 # write.csv(genes.with.id[,c("ensembl_gene_id", "hgnc_symbol")],file="/data/bnf/ref/fuseq/genes_of_interest.tsv",row.names = F)
 
-genes.with.id<-read.csv("/data/bnf/ref/fuseq/genes_of_interest.tsv")
+#genes.with.id<-read.csv("/data/bnf/ref/fuseq/genes_of_interest.tsv")
+genes.with.id<-read.csv(args[1])
 rownames(genes.with.id)<-genes.with.id$ensembl_gene_id
 
 
@@ -63,11 +64,12 @@ if(args[1]=="create-reference"){
   
 }
 
-if(file.exists(args[1])){
+if(file.exists(args[2])){
   
-  sample <- tximport(files=args[1],type="salmon",txOut = F,tx2gene = gd[,c("tx_name","gene_id")])
+  sample <- tximport(files=args[2],type="salmon",txOut = F,tx2gene = gd[,c("tx_name","gene_id")])
   #sample <- tximport(files="/data/bnf/premap/rnaseq/7460-19_0.salmon",type="salmon",txOut = F,tx2gene = gd[,c("tx_name","gene_id")])
-  reference <- read.csv(args[2] ,row.names = 1)
+  reference <- read.csv(args[3] ,row.names = 1)
+  #"/fs1/resources/ref/hg38/data/salmon/reference_expression.all.tsv"
   available_ens <- unique(intersect(rownames(sample$abundance),rownames(reference)))
   
   sample.goi <- data.frame(sample_expression=sample$abundance[available_ens,],genes.with.id[available_ens,])
@@ -95,9 +97,9 @@ if(file.exists(args[1])){
   
   results_for_json.list<-list(sample=sample.goi,reference=reference.goi,expression_version="1.0")
   
-  write(toJSON(results_for_json.list,pretty = T,auto_unbox=T,),file = args[3])
+  write(toJSON(results_for_json.list,pretty = T,auto_unbox=T,),file = args[4])
   
-  cat(paste0("Results written to ", args[3]))
+  cat(paste0("Results written to ", args[4]))
   
   q(save = "no")
   
