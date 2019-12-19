@@ -340,6 +340,7 @@ process jaffa{
     output:
     	set val(smpl_id) ,file ("${smpl_id}.jaffa_results.csv") into jaffa_csv_ch
     	file "*.fasta" into jaffa_fasta_ch 
+	rm *.fasta
     
     script:
 
