@@ -65,6 +65,9 @@ Channel
 	.fromPath(params.reference_expression_all)
 	.set{reference_expression_ch}
 
+Channel
+	.fromPath(params.genesOfIntrest)
+	.set{genesOfIntrest}
 
 Channel
     .fromPath(params.csv)
@@ -91,7 +94,7 @@ process star_alignment{
 	
 	output:
 		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
-		file "${smpl_id}.Log.final.out" into star_logFinalOut_ch
+		set val(smpl_id), file ("${smpl_id}.Log.final.out") into star_logFinalOut_ch
 		file "${smpl_id}.Aligned.sortedByCoord.out.bam.bai" into star_sort_bai
 		
 	script: 
@@ -186,7 +189,7 @@ process rseqc_genebody_coverage {
 	tag "${smpl_id}"
 	publishDir "${params.outdir}/qc", mode:'copy'
 	errorStrategy 'ignore'
-
+	
 	when:
 		params.qc || params.bodyCov
 	
@@ -199,7 +202,7 @@ process rseqc_genebody_coverage {
 	
 	output:
 		
-		file "${smpl_id}.geneBodyCoverage.txt" into gene_bodyCov_ch
+		file "*.geneBodyCoverage.txt" into gene_bodyCov_ch
 	
 	script:
 
@@ -238,11 +241,11 @@ process provider{
 /* ******************************** */
 
 process star_fusion{
-	errorStrategy 'ignore'
-	//scratch true
+    errorStrategy 'ignore'
+    scratch true
     tag "${smpl_id}"
     cpus 16  
-	memory =  60.GB
+    memory  60.GB
     publishDir "${params.outdir}/fusion", mode: 'copy'
 
     when:
@@ -266,8 +269,7 @@ process star_fusion{
 		${option} \\
 		--CPU ${task.cpus} \\
 		--output_dir . \\
-		--verbose_level 2 \\
-		--FusionInspector validate 
+		--verbose_level 2  
 		
 	mv  star-fusion.fusion_predictions.tsv ${smpl_id}.star-fusion.fusion_predictions.tsv 
     """
@@ -299,7 +301,7 @@ process fusioncatcher{
     """
    	fusioncatcher.py  -d ${data_dir} -i ${option}  --threads ${task.cpus} -o ./${smpl_id}.fusioncatcher
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
-	mv  final-list_candidate-fusion-genes.hg19.txt ${smpl_id}.final-list_candidate-fusion-genes.hg19.txt
+	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.hg19.txt ${smpl_id}.final-list_candidate-fusion-genes.hg19.txt
     """
 }
 
@@ -324,6 +326,7 @@ process filter_aml_fusions {
 
 
 process jaffa{
+	scratch true
     tag "${smpl_id}"
 	errorStrategy 'ignore'
     publishDir  "${params.outdir}/fusion", mode: 'copy'
@@ -335,14 +338,15 @@ process jaffa{
     	set val(smpl_id) , file(read1), file(read2) from  read_files_jaffa
 
     output:
-    	file "${smpl_id}.jaffa_results.csv" into jaffa_csv_ch
-    	//file "*.fasta" into jaffa_fasta_ch 
+    	set val(smpl_id) ,file ("${smpl_id}.jaffa_results.csv") into jaffa_csv_ch
+    	file "*.fasta" into jaffa_fasta_ch 
     
     script:
 
    	"""
    	bpipe run  -p  genome=hg38 -p refBase="${params.jaffa_base}" ${jaffa_file}  ${read1} ${read2}
 	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
+
    	"""
 }
 
@@ -370,16 +374,18 @@ process quant{
 		
 
 	output:
-		set val(smpl_id), file("quant.sf") into quant_ch
-		set val(smpl_id), file("${smpl_id}.flenDist.txt") into flendist_ch
+		set val(smpl_id), file ("${smpl_id}.quant.sf") into quant_ch
+		set val(smpl_id), file ("${smpl_id}.flenDist.txt") into flendist_ch
 		//file "${smpl_id}.salmon.expr"
 		//file "${smpl_id}.STAR.fusionreport"
 
 	script:
 
 	"""
-	salmon quant --threads ${task.cpus} -i ${index} -l A -1 ${read1} -2 ${read2} --validateMappings -o quant
-	mv ./quant/libParams/flenDist.txt ${smpl_id}.flenDist.txt
+	salmon quant --threads ${task.cpus} -i ${index} -l A -1 ${read1} -2 ${read2} --validateMappings -o .
+	mv ./libParams/flenDist.txt ${smpl_id}.flenDist.txt
+	mv quant.sf ${smpl_id}.quant.sf
+	
 	"""
 }
 
@@ -387,27 +393,31 @@ process quant{
 //fusion_classifier_report.R  ${smpl_id}  ./quant/quant.sf  ${hem_classifier.salmon} ${ensembl_annotation} ${smpl_id}.STAR.fusionreport
 
 process extract_expression {
+	
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}/${smpl_id}/quant", mode:'copy'
+	publishDir "${params.outdir}/quant", mode:'copy'
 
 	input:
-	set val(smpl_id), file(quants) from quant_ch
-	file (reference_expression_all) from reference_expression_ch //args[2]
-	file (hem_classifier_salmon) from hem_classifier_salmon_ch //[3]
-	file (ensembl_annotation) from ensembl_annotation_ch // args[4]
+		set val(smpl_id), file(quants) from quant_ch // args[2] in both
+		//file quants from quant_test
+		file (genesOfIntrest) from genesOfIntrest //args[1] in expression
+		file (reference_expression_all) from reference_expression_ch //args[3] in expr
+		file (hem_classifier_salmon) from hem_classifier_salmon_ch //args[3] in classifier
+		file (ensembl_annotation) from ensembl_annotation_ch // args[4] in classifier 
 
 	when:
 		params.quant
 
 	output:
 
-	file "${smpl_id}.salmon.expr"
-	file "${smpl_id}.STAR.fusionreport"
+		file "${smpl_id}.salmon.expr" //args[4] in expr
+		file "${smpl_id}.STAR.fusionreport" //args[5] in classifier
 
 	script:
+
 	"""
-	extract_expression_fusion_SR.R  ${quants}  ${reference_expression_all}  ${smpl_id}.salmon.expr
-	fusion_classifier_report_SR.R  ${smpl_id} ${quants} ${hem_classifier.salmon} ${ensembl_annotation} ${smpl_id}.STAR.fusionreport
+	extract_expression_fusion_SR.R  ${genesOfIntrest}  ${quants}  ${reference_expression_all}  ${smpl_id}.salmon.expr
+	fusion_classifier_report_SR.R  ${smpl_id} ${quants} ${hem_classifier_salmon} ${ensembl_annotation} ${smpl_id}.STAR.fusionreport
 	
 	"""
 
@@ -441,18 +451,18 @@ process create_fusion_report{
 */
 /* post alignment */
 process postaln_qc_rna {
-	publishDir "${params.outdir}" , mode:'copy'
+	publishDir "${params.outdir}/finalResults" , mode:'copy'
 	errorStrategy 'ignore'
 
 	when:
 		params.combine 
 
 	input:
-		file (star_final) from star_logFinalOut_ch
+		set val(smpl_id), file(star_final) from star_logFinalOut_ch
 		file (fusion) from final_list_fusionCatcher_ch
 		file (geneCov) from gene_bodyCov_ch
 		file (provIder) from provider_output_ch
-		file (flendist) from flendist_ch
+		set val(smpl_id),file(flendist) from flendist_ch
 	
 	output:
 		file "${smpl_id}.STAR.rnaseq_QC" into final_QC 
@@ -477,14 +487,15 @@ process postaln_qc_rna {
 // aggregate fusion files
 process aggregate_fusion{
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}" , mode: 'copy'
+	publishDir "${params.outdir}/finalResults" , mode: 'copy'
 
 	when :
-		params.combine 
+		params.star_fusion &&  params.combine
+
 	input:
 		file (fusionCatcher_file) from final_list_fusionCatcher_agg_ch
 		file (starFusion_file) from star_fusion_agg_ch
-		file (fusionJaffa_file) from jaffa_csv_ch
+		set val(smpl_id), file(fusionJaffa_file) from jaffa_csv_ch
 
 	output:
 		file "${smpl_id}.agg.vcf" into agg_vcf_ch
