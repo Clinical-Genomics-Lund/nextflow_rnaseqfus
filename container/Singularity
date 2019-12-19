@@ -38,7 +38,7 @@ From:nfcore/base
 
 
 	/opt/conda/bin/conda env create -f /environment.yml 
-	ln -s /opt/bin/CMD /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2	
+	ln -s /bin/CMD/tsv.pm /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2	
 
 	#/opt/conda/bin/conda env create -f /environment_starfusion.yml
 
