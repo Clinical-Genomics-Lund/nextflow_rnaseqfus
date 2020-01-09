@@ -21,7 +21,7 @@ From:nfcore/base
 %files
         environment.yml /
 #	environment_starfusion.yml /
-#	../bin/ /opt
+	../bin/ /opt
 	../bin/ /
 
 		
