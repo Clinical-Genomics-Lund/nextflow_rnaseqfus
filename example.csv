@@ -1,0 +1,2 @@
+clarity_sample_id,id,assay,diagnosis,clarity_pool_id,platform,read1,read2
+ALL354A185,10028-19,rnaseq-fusion,AML,24-71234,illumina,/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R1_001.fastq.gz,/data/NextSeq1/190808_NB501697_0150_AHN7T7AFXY/Data/Intensities/BaseCalls/ALL354A185_122-59112_S5_R2_001.fastq.gz
