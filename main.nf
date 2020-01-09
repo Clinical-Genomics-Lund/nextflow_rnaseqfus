@@ -1,8 +1,5 @@
 #!/usr/bin/dev nextflow
 
-
-
-
 jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
 
 		
@@ -184,11 +181,12 @@ process qualimap{
 	//export JAVA_OPTS='-Djava.io.tmpdir=${params.tmp_dir}' or export JAVA_OPTS='-Djava.io.tmpdir=/scratch -Xmx10G'
 }
 	
-process rseqc_genebody_coverage {
-
+process rseqc_genebody_coverage{
 	tag "${smpl_id}"
 	publishDir "${params.outdir}/qc", mode:'copy'
 	errorStrategy 'ignore'
+	memory 10.GB
+	cpus 16
 	
 	when:
 		params.qc || params.bodyCov
@@ -245,7 +243,7 @@ process star_fusion{
     scratch true
     tag "${smpl_id}"
     cpus 16  
-    memory  60.GB
+    memory  52.GB
     publishDir "${params.outdir}/fusion", mode: 'copy'
 
     when:
@@ -276,7 +274,7 @@ process star_fusion{
 	}
 //	--tmpdir ${params.tmp_dir}
 
-process fusioncatcher{
+process fusioncatcher {
     errorStrategy 'ignore'
     tag "${smpl_id}"
     cpus 16 
@@ -326,11 +324,12 @@ process filter_aml_fusions {
 
 
 process jaffa{
-	scratch true
     tag "${smpl_id}"
-	errorStrategy 'ignore'
+    errorStrategy 'ignore'
     publishDir  "${params.outdir}/fusion", mode: 'copy'
-
+    memory 64.GB 
+    cpus 12
+    
     when:
     	params.jaffa || params.fusion
 
@@ -340,14 +339,13 @@ process jaffa{
     output:
     	set val(smpl_id) ,file ("${smpl_id}.jaffa_results.csv") into jaffa_csv_ch
     	file "*.fasta" into jaffa_fasta_ch 
-	rm *.fasta
+	
     
     script:
 
    	"""
-   	bpipe run  -p  genome=hg38 -p refBase="${params.jaffa_base}" ${jaffa_file}  ${read1} ${read2}
+   	bpipe run -m 64GB -n ${task.cpus} -p genome=hg38 -p refBase="${params.jaffa_base}" ${jaffa_file}  ${read1} ${read2}
 	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
-
    	"""
 }
 
@@ -491,7 +489,7 @@ process aggregate_fusion{
 	publishDir "${params.outdir}/finalResults" , mode: 'copy'
 
 	when :
-		params.star_fusion &&  params.combine
+	     params.combine
 
 	input:
 		file (fusionCatcher_file) from final_list_fusionCatcher_agg_ch
