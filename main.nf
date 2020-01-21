@@ -239,11 +239,11 @@ process provider{
 /* ******************************** */
 
 process star_fusion{
-    errorStrategy 'ignore'
-    scratch true
+    //errorStrategy 'ignore'
+    //scratch true
     tag "${smpl_id}"
-    cpus 16  
-    memory  52.GB
+    cpus 18
+    memory  70.GB
     publishDir "${params.outdir}/fusion", mode: 'copy'
 
     when:
@@ -262,11 +262,12 @@ process star_fusion{
    		option = params.singleEnd ? "--left_fq ${read1}" : "--left_fq ${read1} --right_fq ${read2}"
     	//def extra_params = params.star_fusion_opt ? "${params.star_fusion_opt}" : ''
     """
-    STAR-Fusion \\
-		--genome_lib_dir ${reference} \\
+    /usr/local/src/STAR-Fusion/STAR-Fusion \\
+		--genome_lib_dir /fs1/resources/ref/hg38/data/starFusion/GRCh38_gencode_v32_CTAT_lib_Dec062019.plug-n-play/ctat_genome_lib_build_dir/ \\
 		${option} \\
 		--CPU ${task.cpus} \\
 		--output_dir . \\
+		--FusionInspector validate \\
 		--verbose_level 2  
 		
 	mv  star-fusion.fusion_predictions.tsv ${smpl_id}.star-fusion.fusion_predictions.tsv 
