@@ -9,7 +9,7 @@ dependencies:
     #- bioconda::samtools=1.9
     #- conda-forge::biopython=1.74
     #- bioconda::fusioncatcher=1.10
-    - bioconda::star-fusion=1.7.0
+    #- bioconda::star-fusion=1.7.0
     - bioconda::star=2.7.2b
     - bioconda::jaffa=1.09  
     - bioconda::salmon=1.0.0
@@ -29,6 +29,17 @@ dependencies:
     - perl
     - bioconda::perl-file-find-rule
     - bioconda::perl-json
+    ####starfusion perl pack:
+#    - bioconda::perl-db-file
+#    - bioconda::perl-uri
+    #- bioconda::perl-set-intervaltree
+#    - conda-forge::perl-carp-assert
+#    - bioconda::perl-json-xs
+#    - bioconda::perl-perlio-gzip
+#    - bioconda::igv-reports
+#    - conda-forge::requests
+#    - bioconda::perl-app-cpanminus
+    #####	
     - bioconda::bioconductor-genomicfeatures
     - bioconda::bioconductor-org.hs.eg.db
     - bioconda::bioconductor-biomart
