@@ -5,9 +5,7 @@ channels:
     - defaults
 
 dependencies:
-    #- bioconda::bedtools=2.28.0
-    #- bioconda::samtools=1.9
-    #- conda-forge::biopython=1.74
+
     #- bioconda::fusioncatcher=1.10
     #- bioconda::star-fusion=1.7.0
     - bioconda::star=2.7.2b
@@ -25,21 +23,13 @@ dependencies:
     - conda-forge::r-reshape=0.8.8
     - conda-forge::r-knitr=1.25
     - conda-forge::r-optparse=1.6.4
-    #- bioconda::r-tximport=0.0.15
+    ##- bioconda::r-tximport=0.0.15
     - perl
     - bioconda::perl-file-find-rule
     - bioconda::perl-json
-    ####starfusion perl pack:
-#    - bioconda::perl-db-file
-#    - bioconda::perl-uri
-    #- bioconda::perl-set-intervaltree
-#    - conda-forge::perl-carp-assert
-#    - bioconda::perl-json-xs
-#    - bioconda::perl-perlio-gzip
-#    - bioconda::igv-reports
-#    - conda-forge::requests
-#    - bioconda::perl-app-cpanminus
-    #####	
+    - bioconda::perl-datetime=1.42
+    - bioconda::perl-app-cpanminus=1.7044
+    #- bioconda::perl-json-maybexs
     - bioconda::bioconductor-genomicfeatures
     - bioconda::bioconductor-org.hs.eg.db
     - bioconda::bioconductor-biomart

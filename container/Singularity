@@ -39,7 +39,8 @@ From:nfcore/base
 	rm -rf /var/lib/apt/lists/*
 	apt -y clean
 	apt -y update
-        apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
+	#apt -y install libz-dev build-essential gettext cmake libxml2-dev libcurl4-openssl-dev libssl-dev make libbz2-dev libkrb5-dev 
+	apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
 	apt-get install -y libopenblas-dev r-base-core libcurl4-openssl-dev libopenmpi-dev openmpi-bin openmpi-common openmpi-doc 
 
 	mkdir /opt/fusioncatcher
@@ -49,14 +50,16 @@ From:nfcore/base
 	
 	/opt/conda/bin/conda env create -f /environment.yml 
 	ln -s /bin/CMD/tsv.pm /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2
-	
-	#starfusion perl packages:	
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm URI::Escape
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm DB_File --force
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm Set::IntervalTree
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm Carp::Assert
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm JSON::XS
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm PerlIO::gzip
+
+	#installing mongodb:
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm BSON::Regex JSON::MaybeXS BSON::Timestamp BSON::Bytes BSON BSON::OID BSON::Code BSON::Types BSON::Raw BSON::Decimal128 BSON::Time BSON::DBRef 
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  Config::AutoConf Path::Tiny --force
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  BSON::Regex BSON::Timestamp BSON::Bytes BSON BSON::OID BSON::Code BSON::Types BSON::Raw BSON::Decimal128 BSON::Time BSON::DBRef
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm MongoDB
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  MongoDB::BSON
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  MongoDB::OID
+
+
 
 
 	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
