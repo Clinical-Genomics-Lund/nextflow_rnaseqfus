@@ -110,25 +110,6 @@ process star_alignment{
 	"""
 	
 }
-/*
-process SamBamBa {
-	tag "${smpl_id}"
-	publishDir "${params.outdir}/bam", mode: 'copy'
-	when:
-		params.qc || params.star
-	input:
-		file (reads_bam) from aligned_bam
-	
-	output:
-		file "*"  into star_sort_bai
-
-	script:
-	"""
-	sambamba index --show-progress -t 8 $reads_bam 
-	"""
-}
-
-*/
 
 
 process fastqscreen{ 
@@ -186,7 +167,7 @@ process rseqc_genebody_coverage{
 	publishDir "${params.outdir}/qc", mode:'copy'
 	errorStrategy 'ignore'
 	memory 10.GB
-	cpus 16
+	cpus 1
 	
 	when:
 		params.qc || params.bodyCov
@@ -273,7 +254,7 @@ process star_fusion{
 	mv  star-fusion.fusion_predictions.tsv ${smpl_id}.star-fusion.fusion_predictions.tsv 
     """
 	}
-//	--tmpdir ${params.tmp_dir}
+
 
 process fusioncatcher {
     errorStrategy 'ignore'
@@ -304,24 +285,6 @@ process fusioncatcher {
     """
 }
 
-/*
-process filter_aml_fusions {
-	errorStrategy 'ignore'
-	publishDir "${params.outdir}/${smpl_id}/fusion/FusionCatcher", mode: 'copy'
-
-	when: 
-		params.fusioncatcher || params.fusion
-	input:
-		file (fusioncatcher_files) from fusioncatcher_output
-
-	output:
-	file "${smpl_id}.fusioncatcher.xls" into filter_fusion_ch
-	script:
-	"""
-	filter_aml_fusions.pl ${fusioncatcher_files} > ${smpl_id}.fusioncatcher.xls
-	"""
-}
-*/
 
 
 process jaffa{
@@ -389,8 +352,6 @@ process quant{
 	"""
 }
 
-//extract_expression_fusion.R  ./quant/quant.sf  ${reference_expression_all}  ${smpl_id}.salmon.expr
-//fusion_classifier_report.R  ${smpl_id}  ./quant/quant.sf  ${hem_classifier.salmon} ${ensembl_annotation} ${smpl_id}.STAR.fusionreport
 
 process extract_expression {
 	
@@ -410,8 +371,8 @@ process extract_expression {
 
 	output:
 
-		file "${smpl_id}.salmon.expr" //args[4] in expr
-		file "${smpl_id}.STAR.fusionreport" //args[5] in classifier
+		set val(smpl_id), file ("${smpl_id}.salmon.expr") into salmon_expr_ch //args[4] in expr
+		set val(smpl_id), file ("${smpl_id}.STAR.fusionreport") into star_fusion_report//args[5] in classifier
 
 	script:
 
@@ -428,28 +389,8 @@ process extract_expression {
 /*  Part 4: Post processing                         */
 /****************************************************/
  
-/*
-// Create fusion report  
-process create_fusion_report{
 
-	errorStrategy 'ignore'
-	publishDir "${params.outdir}" , mode:'copy'
 
-	input:
-		set val(smpl_id), file(quant) from quant_ch
-
-	output:
-		set val(smpl_id), file("${smpl_id}.STAR.fusionreport") into report
-
-	script:
-	"""
-	fusion_classifier_report.R  ${smpl_id}  ${quant}  ${smpl_id}.STAR.fusionreport
-	"""
-
-}
-
-*/
-/* post alignment */
 process postaln_qc_rna {
 	publishDir "${params.outdir}/finalResults" , mode:'copy'
 	errorStrategy 'ignore'
@@ -465,7 +406,7 @@ process postaln_qc_rna {
 		set val(smpl_id),file(flendist) from flendist_ch
 	
 	output:
-		file "${smpl_id}.STAR.rnaseq_QC" into final_QC 
+		set val(smpl_id), file("${smpl_id}.STAR.rnaseq_QC") into final_QC 
 
 	
 	script:
@@ -481,9 +422,9 @@ process postaln_qc_rna {
 	"""
 } 
 
-
-/* Part 5 :  Prepare for and upload to Coyote */
-
+/***********************************************/
+/* Part 5 :  Prepare for and upload to Coyote  */
+/***********************************************/
 // aggregate fusion files
 process aggregate_fusion{
 	errorStrategy 'ignore'
@@ -498,7 +439,7 @@ process aggregate_fusion{
 		set val(smpl_id), file(fusionJaffa_file) from jaffa_csv_ch
 
 	output:
-		file "${smpl_id}.agg.vcf" into agg_vcf_ch
+		file "${smpl_id}.agg.vcf" into agg_vcf_ch 
 
 	script:
 
@@ -513,28 +454,44 @@ process aggregate_fusion{
 
 
 /*
-//Register to CMD 
-process register_to_CMD{
-	publishDir "${params.outdir}/${smpl_id}/final_results" , mode:'copy'
+process register_sample{
 	input:
-	file (final_QC_file) from final_QC
-	output:
-	file '*' into  registering_ch
+		set val(smpl_id), file(QC) from final_QC 
+		
 	script:
 	"""
-	register_sample.pl --run-folder  /data/NextSeq1/181121_NB501697_0089_AHFGY3AFXY  --sample-id ${smpl_id} --assay rnaseq-fusion --qc  ${final_QC_file}
+	/data/bnf/scripts/register_sample.pl \\
+	--run-folder /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY \\
+	--sample-id  ${smpl_id} \\
+	--assay rnaseq-fusion \\
+	--qc ${QC}
 	"""
 	}
+
+
 */
-
 /*
-process import_to_Coyote{
+// import result to coyot
+process imoprt_to_coyot {
+
 	input:
-	file (fusion_agg) from agg_vcf_ch
-	file 
+	set val(smpl_id), file (fusion_report) from star_fusion_report
+	file (agg_vcf) from  agg_vcf_ch
+	file (rnaseq_QC) from final_QC 
+	file (salmon_expr) from salmon_expr_ch 
 
-import_fusion_to_coyote.pl --classification /data/bnf/postmap/rnaseq/6192-11.STAR.fusionreport --fusions /data/bnf/6192-11.agg.vcf --id 6192-11-fusions --qc /data/bnf/postmap/rnaseq/6192-11.STAR.rnaseq_QC --group fusion
-*/ 
+	script:
+	"""
+	import_fusion_to_coyote.pl \\
+	--classification ${fusion_report} \\
+	--fusions ${agg_vcf} \\
+	--id 12175-19-fusions \\ 
+	--qc ${rnaseq_QC} \\
+	--group fusion \\
+	--expr ${salmon_expr} \\
+	--clarity-sample-id ${smpl_id} \\
+	--clarity-pool-id 122-75173
 
+}
 
-
+*/
