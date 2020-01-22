@@ -329,7 +329,7 @@ process jaffa{
     errorStrategy 'ignore'
     publishDir  "${params.outdir}/fusion", mode: 'copy'
     memory 64.GB 
-    cpus 12
+    cpus 18
     
     when:
     	params.jaffa || params.fusion
