@@ -232,7 +232,7 @@ process star_fusion{
 
     input:
 		set val(smpl_id) , file(read1), file(read2) from read_files_star_fusion
-		file (reference) from star_fusion_ref
+		//file (reference) from star_fusion_ref
 	
     output:
 		file("${smpl_id}.star-fusion.fusion_predictions.tsv") optional true into star_fusion_agg_ch
@@ -244,7 +244,7 @@ process star_fusion{
     	//def extra_params = params.star_fusion_opt ? "${params.star_fusion_opt}" : ''
     """
     /usr/local/src/STAR-Fusion/STAR-Fusion \\
-		--genome_lib_dir /fs1/resources/ref/hg38/data/starFusion/GRCh38_gencode_v32_CTAT_lib_Dec062019.plug-n-play/ctat_genome_lib_build_dir/ \\
+		--genome_lib_dir ${params.star_fusion_ref} \\
 		${option} \\
 		--CPU ${task.cpus} \\
 		--output_dir . \\
@@ -254,7 +254,6 @@ process star_fusion{
 	mv  star-fusion.fusion_predictions.tsv ${smpl_id}.star-fusion.fusion_predictions.tsv 
     """
 	}
-
 
 process fusioncatcher {
     errorStrategy 'ignore'
