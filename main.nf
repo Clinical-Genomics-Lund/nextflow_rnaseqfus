@@ -42,10 +42,8 @@ process star_alignment{
 	mv Aligned.sortedByCoord.out.bam  ${smpl_id}.Aligned.sortedByCoord.out.bam
 	sambamba index --show-progress -t 8 ${smpl_id}.Aligned.sortedByCoord.out.bam 
 	mv Log.final.out ${smpl_id}.Log.final.out
-	"""
-	
-}
-
+	"""	
+	}
 
 process fastqscreen{ 
 
@@ -70,7 +68,7 @@ process fastqscreen{
 	"""
 	fastq_screen --conf ${params.genome_conf} --aligner bowtie2 --force ${read1} ${read2}
 	"""
-}
+	}
 
 
 process qualimap{
@@ -94,7 +92,7 @@ process qualimap{
 	export JAVA_OPTS='-Djava.io.tmpdir=${params.tmp_dir}'
 	qualimap --java-mem-size=18G rnaseq -bam ${bam_f} -gtf ${params.genome_gtf} -pe -outdir ${smpl_id}.qualimap
 	"""
-}
+	}
 	
 process rseqc_genebody_coverage{
 	tag "${smpl_id}"
@@ -110,8 +108,7 @@ process rseqc_genebody_coverage{
 	
 		set val(smpl_id), file(bam_f) from star_sort_bam_1
 		file (bai_f) from star_sort_bai
-		
-	
+			
 	output:
 		
 		file "*.geneBodyCoverage.txt" into gene_bodyCov_ch
@@ -121,7 +118,7 @@ process rseqc_genebody_coverage{
 	"""
 	geneBody_coverage.py -i ${bam_f} -r ${params.ref_rseqc_bed} -o ${smpl_id}
 	"""
-}
+	}
 
 process provider{
 
@@ -145,37 +142,39 @@ process provider{
 	"""
 	provider.pl  --out ${prefix} --bed ${params.ref_bed} --bam ${bam_f} --bedxy ${params.ref_bedXy}
 	"""
-}
+	}
+	
+	
+	
 
 /* ******************************** */	
 /* Part2 : fusion identification  */
 /* ******************************** */
 
 process star_fusion{
-    //errorStrategy 'ignore'
-    //scratch true
-    tag "${smpl_id}"
-    cpus 18
-    memory  70.GB
-    publishDir "${params.outdir}/fusion", mode: 'copy'
-
-    when:
-    	params.star_fusion || params.fusion 
-
-    input:
+	//errorStrategy 'ignore'
+	//scratch true
+	tag "${smpl_id}"
+	cpus 18
+	memory  70.GB
+	publishDir "${params.outdir}/fusion", mode: 'copy'
+	
+	when:
+		params.star_fusion || params.fusion 
+	
+	input:
 		set val(smpl_id) , file(read1), file(read2) from read_files_star_fusion
 		
-	
-    output:
+	output:
 		file("${smpl_id}.star-fusion.fusion_predictions.tsv") optional true into star_fusion_agg_ch
-    
-    script:
+    	
+	script:
 
     	//def avail_mem = task.memory ? "--limitBAMsortRAM ${task.memory.toBytes() - 100000000}" : ''
-   		option = params.singleEnd ? "--left_fq ${read1}" : "--left_fq ${read1} --right_fq ${read2}"
+   	option = params.singleEnd ? "--left_fq ${read1}" : "--left_fq ${read1} --right_fq ${read2}"
     	//def extra_params = params.star_fusion_opt ? "${params.star_fusion_opt}" : ''
-    """
-    /usr/local/src/STAR-Fusion/STAR-Fusion \\
+    	"""
+    	/usr/local/src/STAR-Fusion/STAR-Fusion \\
 		--genome_lib_dir ${params.star_fusion_ref} \\
 		${option} \\
 		--CPU ${task.cpus} \\
@@ -184,64 +183,63 @@ process star_fusion{
 		--verbose_level 2  
 		
 	mv  star-fusion.fusion_predictions.tsv ${smpl_id}.star-fusion.fusion_predictions.tsv 
-    """
-}
+    	"""
+	}
 
 
 process fusioncatcher {
-    errorStrategy 'ignore'
-    tag "${smpl_id}"
-    cpus 16 
-    publishDir "${params.outdir}/fusion", mode: 'copy'
-
-    when: 
-	params.fusioncatcher || params.fusion
-
-    input:
-    set val(smpl_id) , file(read1), file(read2) from read_files_fusioncatcher
-    //file (data_dir) from fusionCatcher_ref
-
-    output:
-	file "${smpl_id}.final-list_candidate-fusion-genes.hg19.txt" into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
-	file "${smpl_id}.fusioncatcher.xls" into filter_fusion_ch
-
-    script:
-    option = params.singleEnd ? read1 : "${read1},${read2}"
-    //def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
-    """
+	errorStrategy 'ignore'
+	tag "${smpl_id}"
+	cpus 16 
+	publishDir "${params.outdir}/fusion", mode: 'copy'
+	
+	when: 
+		params.fusioncatcher || params.fusion
+	
+	input:
+		set val(smpl_id) , file(read1), file(read2) from read_files_fusioncatcher
+    	
+	output:
+		file "${smpl_id}.final-list_candidate-fusion-genes.hg19.txt" into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
+		file "${smpl_id}.fusioncatcher.xls" into filter_fusion_ch
+	
+	script:
+	option = params.singleEnd ? read1 : "${read1},${read2}"
+    	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
+    	"""
    	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} -o ./${smpl_id}.fusioncatcher
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
 	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.hg19.txt ${smpl_id}.final-list_candidate-fusion-genes.hg19.txt
-    """
-}
-
+    	"""
+	}
 
 
 process jaffa{
-    tag "${smpl_id}"
-    errorStrategy 'ignore'
-    publishDir  "${params.outdir}/fusion", mode: 'copy'
-    memory 64.GB 
-    cpus 18
-    
-    when:
-    	params.jaffa || params.fusion
-
-    input:
-    	set val(smpl_id) , file(read1), file(read2) from  read_files_jaffa
-
-    output:
-    	set val(smpl_id) ,file ("${smpl_id}.jaffa_results.csv") into jaffa_csv_ch
-    	file "*.fasta" into jaffa_fasta_ch 
+	tag "${smpl_id}"
+	errorStrategy 'ignore'
+	publishDir  "${params.outdir}/fusion", mode: 'copy'
+	memory 64.GB 
+	cpus 18
 	
-    
-    script:
+	when:
+		params.jaffa || params.fusion
+	
+	input:
+		set val(smpl_id) , file(read1), file(read2) from  read_files_jaffa
+	
+	output:
+		set val(smpl_id) ,file ("${smpl_id}.jaffa_results.csv") into jaffa_csv_ch
+		file "*.fasta" into jaffa_fasta_ch 
+	
+    	script:
 
    	"""
    	bpipe run -m 64GB -n ${task.cpus} -p genome=hg38 -p refBase="${params.jaffa_base}" ${params.jaffa_file}  ${read1} ${read2}
 	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
    	"""
-}
+	}
+
+
 
 
 /***************************************************/
@@ -266,7 +264,6 @@ process quant{
 		set val(smpl_id), file ("${smpl_id}.quant.sf") into quant_ch
 		set val(smpl_id), file ("${smpl_id}.flenDist.txt") into flendist_ch
 		
-
 	script:
 
 	"""
@@ -275,8 +272,7 @@ process quant{
 	mv quant.sf ${smpl_id}.quant.sf
 	
 	"""
-}
-
+	}
 
 process extract_expression {
 	
@@ -301,16 +297,13 @@ process extract_expression {
 	fusion_classifier_report_SR.R  ${smpl_id} ${quants} ${params.hem_classifier_salmon} ${params.ensembl_annotation} ${smpl_id}.STAR.fusionreport
 	
 	"""
-
-}
+	}
 
 
 /***************************************************/
 /*  Part 4: Post processing                         */
 /****************************************************/
  
-
-
 process postaln_qc_rna {
 	publishDir "${params.outdir}/finalResults" , mode:'copy'
 	errorStrategy 'ignore'
@@ -333,14 +326,16 @@ process postaln_qc_rna {
 
 	"""
 	postaln_qc_rna.R \\
-	--star ${star_final} \\
-	--fusion ${fusion} \\
-	--id '${smpl_id}' \\
-	--provider ${provIder} \\
-	--flendist ${flendist} \\
-	--genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
+		--star ${star_final} \\
+		--fusion ${fusion} \\
+		--id '${smpl_id}' \\
+		--provider ${provIder} \\
+		--flendist ${flendist} \\
+		--genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
 	"""
-} 
+	} 
+
+
 
 /***********************************************/
 /* Part 5 :  Prepare for and upload to Coyote  */
@@ -370,7 +365,7 @@ process aggregate_fusion{
 		--jaffa ${fusionJaffa_file} \\
 		--priority fusioncatcher,jaffa,starfusion > ${smpl_id}.agg.vcf
 	"""
-}
+	}
 
 
 /*
@@ -381,13 +376,12 @@ process register_sample{
 	script:
 	"""
 	/data/bnf/scripts/register_sample.pl \\
-	--run-folder /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY \\
-	--sample-id  ${smpl_id} \\
-	--assay rnaseq-fusion \\
-	--qc ${QC}
+		--run-folder /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY \\
+		--sample-id  ${smpl_id} \\
+		--assay rnaseq-fusion \\
+		--qc ${QC}
 	"""
 	}
-
 
 */
 /*
@@ -403,15 +397,16 @@ process imoprt_to_coyot {
 	script:
 	"""
 	import_fusion_to_coyote.pl \\
-	--classification ${fusion_report} \\
-	--fusions ${agg_vcf} \\
-	--id 12175-19-fusions \\ 
-	--qc ${rnaseq_QC} \\
-	--group fusion \\
-	--expr ${salmon_expr} \\
-	--clarity-sample-id ${smpl_id} \\
-	--clarity-pool-id 122-75173
+		--classification ${fusion_report} \\
+		--fusions ${agg_vcf} \\
+		--id 12175-19-fusions \\ 
+		--qc ${rnaseq_QC} \\
+		--group fusion \\
+		--expr ${salmon_expr} \\
+		--clarity-sample-id ${smpl_id} \\
+		--clarity-pool-id 122-75173
 
-}
+	"""
+	}
 
 */
