@@ -1,71 +1,5 @@
 #!/usr/bin/dev nextflow
 
-//jaffa_file = "/opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/JAFFA_direct.groovy"
-
-				
-
-/*
-Channel
-	.fromPath(params.ref_genome_dir)
-	.ifEmpty{ exit 1, "genome reference index directory not found!" }
-	.set{genome_index}
-
-Channel
-	.fromPath(params.genome_gtf)
-	.ifEmpty { exit 1, " Qualimap error: annotation file not found!" }
-	.set{gtf38_qualimap}
-
-//Provider channels
-Channel
-	.fromPath(params.ref_bed)
-	.ifEmpty { exit 1, "provider ref error : ref_bed reference file not found!" }
-	.set{bed_ch}
-
-
-Channel
-	.fromPath(params.ref_rseqc_bed)
-	.ifEmpty { exit 1, "RseQC bed file not found!" }
-	.set{ref_RseQC_ch} 
-
-
-
-Channel
-	.fromPath(params.ref_bedXy)
-	.ifEmpty { exit 1, "provider ref error : ref_bedXY reference file not found!" }
-	.set{bedXy_ch}
-
-
-Channel
-    .fromPath(params.star_fusion_ref)
-    .ifEmpty { exit 1, "Star-Fusion reference directory not found!" }
-	.set{star_fusion_ref}
-
-Channel
-	.fromPath(params.fusionCatcher_ref)
-	.ifEmpty { exit 1, "Fusioncatcher reference directory/file not found!" }
-	.set{fusionCatcher_ref}
-
-Channel
-	.fromPath(params.salmon_index_dir)
-	.ifEmpty { exit 1, " Transcriptome index file not found: ${params.salmon_index}"}
-	.set{salmon_index_ch}
-
-
-Channel
-	.fromPath(params.hem_classifier_salmon)
-	.set{hem_classifier_salmon_ch}
-
-Channel
-	.fromPath(params.ensembl_annotation)
-	.set{ensembl_annotation_ch}
-Channel
-	.fromPath(params.reference_expression_all)
-	.set{reference_expression_ch}
-
-Channel
-	.fromPath(params.genesOfIntrest)
-	.set{genesOfIntrest}
-*/
 
 Channel
     .fromPath(params.csv)
@@ -88,7 +22,7 @@ process star_alignment{
 
 	input:
 		set val(smpl_id) , file(read1), file(read2) from read_files_star_align
-		//file (index_files) from  genome_index  //star_index
+		
 	
 	output:
 		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
@@ -126,7 +60,7 @@ process fastqscreen{
 
 	input:
 		set val(smpl_id), file(read1), file(read2) from read_files_fastqscreen
-		//file (config) from fastq_screen_config_ch
+		
 
 	output:
 		file '*.{html,png,txt}' into fastq_screen_ch
@@ -150,8 +84,7 @@ process qualimap{
 
 	input:
 		set val(smpl_id), file(bam_f) from star_sort_bam
-		//file (gtf_qualimap) from gtf38_qualimap
-
+		
 	output:
 		file '*' into qualimap_ch
 
@@ -175,7 +108,6 @@ process rseqc_genebody_coverage{
 	
 	input :
 	
-		//file (ref_bed) from ref_RseQC_ch
 		set val(smpl_id), file(bam_f) from star_sort_bam_1
 		file (bai_f) from star_sort_bai
 		
@@ -202,8 +134,7 @@ process provider{
 
 	input:
 		set val(smpl_id), file(bam_f) from star_sort_bam_2
-		//file (bed_f) from bed_ch
-		//file (bedXy_f) from bedXy_ch	
+		
 	
 	output:
 		file "*.genotypes" into provider_output_ch
@@ -233,7 +164,7 @@ process star_fusion{
 
     input:
 		set val(smpl_id) , file(read1), file(read2) from read_files_star_fusion
-		//file (reference) from star_fusion_ref
+		
 	
     output:
 		file("${smpl_id}.star-fusion.fusion_predictions.tsv") optional true into star_fusion_agg_ch
@@ -254,7 +185,7 @@ process star_fusion{
 		
 	mv  star-fusion.fusion_predictions.tsv ${smpl_id}.star-fusion.fusion_predictions.tsv 
     """
-	}
+}
 
 
 process fusioncatcher {
@@ -329,10 +260,8 @@ process quant{
 
 	input:
 		set val(smpl_id) , file(read1), file(read2) from read_files_salmon
-		//file (index) from salmon_index_ch
 		
 		
-
 	output:
 		set val(smpl_id), file ("${smpl_id}.quant.sf") into quant_ch
 		set val(smpl_id), file ("${smpl_id}.flenDist.txt") into flendist_ch
@@ -356,12 +285,7 @@ process extract_expression {
 
 	input:
 		set val(smpl_id), file(quants) from quant_ch // args[2] in both
-		//file quants from quant_test
-		//  //file (genesOfIntrest) from genesOfIntrest //args[1] in expression
-		// //file (reference_expression_all) from reference_expression_ch //args[3] in expr
-		// //file (hem_classifier_salmon) from hem_classifier_salmon_ch //args[3] in classifier
-		// //file (ensembl_annotation) from ensembl_annotation_ch // args[4] in classifier 
-
+		
 	when:
 		params.quant
 
