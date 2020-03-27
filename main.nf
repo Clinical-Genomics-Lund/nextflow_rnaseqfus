@@ -7,6 +7,11 @@ Channel
     .map{ row-> tuple(row.clarity_sample_id, file(row.read1), file(row.read2)) }
     .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star_align; read_files_salmon; read_files_fastqscreen}
 
+Channel
+	.fromPath(params.csv)
+	.splitCsv(header:true)
+	.map{row -> tuple(row.id,row.clarity_sample_id,row.clarity_pool_id,row.assay)}
+	.into{register_meta;coyote_meta}
 
 
 /* Part1: QC */
@@ -54,7 +59,7 @@ process fastqscreen{
 	publishDir "${params.outdir}/qc/${smpl_id}.fastqscreen" , mode :'copy'
 	
 	when:
-		params.fastqscreen || params.qc 
+		params.fastqscreen 
 
 	input:
 		set val(smpl_id), file(read1), file(read2) from read_files_fastqscreen
@@ -76,9 +81,10 @@ process qualimap{
 	tag  "${smpl_id}"
 	publishDir "${params.outdir}/qc", mode :'copy'
 	errorStrategy 'ignore'
+	memory 18.GB
 
 	when :
-		params.qc || params.qualimap
+		params.qualimap 
 
 	input:
 		set val(smpl_id), file(bam_f) from star_sort_bam
@@ -218,7 +224,7 @@ process jaffa{
 	tag "${smpl_id}"
 	errorStrategy 'ignore'
 	publishDir  "${params.outdir}/fusion", mode: 'copy'
-	memory 64.GB 
+	memory 75.GB 
 	cpus 18
 	
 	when:
@@ -246,7 +252,7 @@ process jaffa{
 /*  Part3 : Expression quantification    */
 /****************************************************/
 
-process quant{
+process salmon{
 
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
@@ -272,7 +278,22 @@ process quant{
 	mv quant.sf ${smpl_id}.quant.sf
 	
 	"""
+
 	}
+
+process create_expr_ref {
+
+	publishDir "${params.refbase}/salmon/sal", mode:'copy'
+	when:
+		params.create_exprRef
+	output:
+		file("reference_expression.all.tsv")
+		file("genes_of_interest.tsv")
+	script:
+	"""
+	extract_expression_fusion_ny.R create-reference
+	"""
+}
 
 process extract_expression {
 	
@@ -287,14 +308,14 @@ process extract_expression {
 
 	output:
 
-		set val(smpl_id), file ("${smpl_id}.salmon.expr") into salmon_expr_ch  //args[4] in expr
-		set val(smpl_id), file ("${smpl_id}.STAR.fusionreport") into star_fusion_report //args[5] in classifier
+		set val(smpl_id), file("${smpl_id}.salmon.expr") into salmon_expr_ch  
+		set val(smpl_id), file("${smpl_id}.STAR.fusionreport") into star_fusion_report //args[5] in classifier
 
 	script:
 
 	"""
-	extract_expression_fusion_SR.R  ${params.genesOfIntrest}  ${quants}  ${params.reference_expression_all}  ${smpl_id}.salmon.expr
-	fusion_classifier_report_SR.R  ${smpl_id} ${quants} ${params.hem_classifier_salmon} ${params.ensembl_annotation} ${smpl_id}.STAR.fusionreport
+	extract_expression_fusion_ny.R  ${params.genesOfIntrest}  ${quants}  ${params.reference_expression_all}  ${smpl_id}.salmon.expr
+	fusion_classifier_report_ny.R  ${smpl_id} ${quants} ${params.hem_classifier_salmon} ${params.ensembl_annotation} ${smpl_id}.STAR.fusionreport
 	
 	"""
 	}
@@ -354,7 +375,7 @@ process aggregate_fusion{
 		set val(smpl_id), file(fusionJaffa_file) from jaffa_csv_ch
 
 	output:
-		file "${smpl_id}.agg.vcf" into agg_vcf_ch 
+		set val(smpl_id), file("${smpl_id}.agg.vcf") into agg_vcf_ch 
 
 	script:
 
@@ -368,45 +389,30 @@ process aggregate_fusion{
 	}
 
 
-/*
-process register_sample{
-	input:
-		set val(smpl_id), file(QC) from final_QC 
-		
-	script:
-	"""
-	/data/bnf/scripts/register_sample.pl \\
-		--run-folder /data/NextSeq2/180815_NB501699_0062_AH73F5AFXY \\
-		--sample-id  ${smpl_id} \\
-		--assay rnaseq-fusion \\
-		--qc ${QC}
-	"""
-	}
-
-*/
-/*
-// import result to coyot
-process imoprt_to_coyot {
+// import result to coyote
+process imoprt_to_coyote {
+	publishDir "${params.crondir}/coyote", mode: 'copy'
 
 	input:
-	set val(smpl_id), file (fusion_report) from star_fusion_report
-	file (agg_vcf) from  agg_vcf_ch
-	file (rnaseq_QC) from final_QC 
-	file (salmon_expr) from salmon_expr_ch 
+		set id1, file(fusion_report) from  star_fusion_report
+		set id2, file(agg_vcf) from  agg_vcf_ch
+		set id3, file(rnaseq_QC) from final_QC 
+		set id4, file(salmon_expr) from salmon_expr_ch 
+		set lab_id,clarity_id,pool_id,assay from coyote_meta
+	when:
+		params.coyote
 
+	output:
+		file("${id}.fusion.validation.coyote")
+	
 	script:
+		id= "${lab_id}_validation"
+		group= 'fusion_validation_nf'
+	
 	"""
-	import_fusion_to_coyote.pl \\
-		--classification ${fusion_report} \\
-		--fusions ${agg_vcf} \\
-		--id 12175-19-fusions \\ 
-		--qc ${rnaseq_QC} \\
-		--group fusion \\
-		--expr ${salmon_expr} \\
-		--clarity-sample-id ${smpl_id} \\
-		--clarity-pool-id 122-75173
+	echo "import_fusion_to_coyote.pl --classification ${params.outdir}/quant/${fusion_report} --fusions ${params.outdir}/finalResults/${agg_vcf} --id ${id} --qc ${params.outdir}/finalResults/${rnaseq_QC} --group ${group} --expr ${params.outdir}/quant/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.fusion.validation.coyote
 
 	"""
 	}
 
-*/
+
