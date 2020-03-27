@@ -7,15 +7,24 @@ From:nfcore/base
 	
 
 %environment
-	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:/opt/bin:/opt/conda/envs/CMD-RNASEQFUS-STARFUS/bin/:/opt/fusioncatcher/bin:$PATH
+	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:/opt/bin:/opt/conda/envs/CMD-RNASEQFUS-STARFUS/bin/:/opt/starFusion/STAR-Fusion-v1.8.1/:/opt/fusioncatcher/bin:$PATH
 	export PERL5LIB=/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2
 	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2/x86_64-linux-thread-multi/
 	export PERL5LIB=$PERL5LIB:/opt/bin/
-	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/PerlLib/
-	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/FusionInspector/PerlLib/
 
-	export PATH=/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/bin:$PATH
-	#export LD_LIBRARY_PATH=-"/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/lib":LD_LIBRARY_PATH	
+	# iF StarFusion manuall installation:
+	#export PERL5LIB=$PERL5LIB:/opt/conda/pkgs/
+	##export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/PerlLib/
+	##export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/FusionInspector/PerlLib/
+	#export PERL5LIB= /opt/starFusion/STAR-Fusion-v1.8.1/FusionFilter/lib/
+	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/FusionInspector/FusionFilter/lib/
+	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/FusionInspector/PerlLib/
+	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/PerlLib/
+	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/ctat-genome-lib-builder/lib/
+
+	# if fuseq :
+	#export PATH=/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/bin:$PATH
+	#export LD_LIBRARY_PATH=-"/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/lib":LD_LIBRARY_PATH #This gives error! :(	has to be solved!
 
 
 %files
@@ -23,38 +32,61 @@ From:nfcore/base
 #	environment_starfusion.yml /
 	../bin/ /opt
 	../bin/ /
+	
 
 		
 %post
 	rm -rf /var/lib/apt/lists/*
 	apt -y clean
 	apt -y update
-        apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
+	#apt -y install libz-dev build-essential gettext cmake libxml2-dev libcurl4-openssl-dev libssl-dev make libbz2-dev libkrb5-dev 
+	apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
 	apt-get install -y libopenblas-dev r-base-core libcurl4-openssl-dev libopenmpi-dev openmpi-bin openmpi-common openmpi-doc 
 
 	mkdir /opt/fusioncatcher
 	cd /opt/fusioncatcher 
 	wget http://sf.net/projects/fusioncatcher/files/bootstrap.py -O bootstrap.py && python bootstrap.py -t -y
-
-
+	cd /opt/
+	
 	/opt/conda/bin/conda env create -f /environment.yml 
-	ln -s /bin/CMD/tsv.pm /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2	
+	ln -s /bin/CMD/tsv.pm /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2
 
-	#/opt/conda/bin/conda env create -f /environment_starfusion.yml
+	#installing mongodb:
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm BSON::Regex JSON::MaybeXS BSON::Timestamp BSON::Bytes BSON BSON::OID BSON::Code BSON::Types BSON::Raw BSON::Decimal128 BSON::Time BSON::DBRef 
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  Config::AutoConf Path::Tiny --force
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  BSON::Regex BSON::Timestamp BSON::Bytes BSON BSON::OID BSON::Code BSON::Types BSON::Raw BSON::Decimal128 BSON::Time BSON::DBRef
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm MongoDB
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  MongoDB::BSON
+	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  MongoDB::OID
+
+
 
 
 	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
 	ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
 	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/trimmomatic-0.39-1/trimmomatic.jar /usr/share/java/trimmomatic.jar
     
-	mkdir /opt/fuseq
-	cd /opt/fuseq
-	wget https://github.com/nghiavtr/FuSeq/releases/download/v1.1.2/FuSeq_v1.1.2_linux_x86-64.tar.gz -O FuSeq_v1.1.2_linux_x86-64.tar.gz
-	tar -xzvf FuSeq_v1.1.2_linux_x86-64.tar.gz
-	cd FuSeq_v1.1.2_linux_x86-64
-	bash configure.sh
-	git clone https://github.com/nghiavtr/FuSeq.git
-		
+	####Fuseq installation:
+	#mkdir /opt/fuseq
+	#cd /opt/fuseq
+	#wget https://github.com/nghiavtr/FuSeq/releases/download/v1.1.2/FuSeq_v1.1.2_linux_x86-64.tar.gz -O FuSeq_v1.1.2_linux_x86-64.tar.gz
+	#tar -xzvf FuSeq_v1.1.2_linux_x86-64.tar.gz
+	#cd FuSeq_v1.1.2_linux_x86-64
+	#bash configure.sh
+	#git clone https://github.com/nghiavtr/FuSeq.git
+	
+	#Install starFusion from full package, v.1.8.1 
+	#mkdir /opt/starFusion
+	#cd /opt/starFusion
+	#wget https://github.com/STAR-Fusion/STAR-Fusion/releases/download/STAR-Fusion-v1.8.1/STAR-Fusion-v1.8.1.FULL.tar.gz
+	#tar -xzvf STAR-Fusion-v1.8.1.FULL.tar.gz
+	#cd STAR-Fusion-v1.8.1
+	#make
+	#cd 
+	
+	#install starFusion singularity container : not working inside this container but outside. 
+	#wget https://data.broadinstitute.org/Trinity/CTAT_SINGULARITY/star-fusion.v1.8.1.simg
+
 	/opt/conda/bin/conda clean -a	
 	
 	

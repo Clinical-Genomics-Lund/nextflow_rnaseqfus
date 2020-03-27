@@ -18,7 +18,7 @@ fi
 
 
 # Copy pipeline script
-#scp $DIR/main.nf $DEST_HOST:$PIPELINE_DEST
+scp $DIR/main.nf $DEST_HOST:$PIPELINE_DEST
 
 # Copy configuration file
 #scp $DIR/configs/nextflow.hopper.config $DEST_HOST:$PIPELINE_DEST/nextflow.config
