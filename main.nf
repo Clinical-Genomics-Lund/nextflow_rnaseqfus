@@ -1,6 +1,5 @@
 #!/usr/bin/dev nextflow
 
-
 Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
@@ -10,8 +9,8 @@ Channel
 Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
-	.map{row -> tuple(row.id,row.clarity_sample_id,row.clarity_pool_id,row.assay)}
-	.into{register_meta;coyote_meta}
+	.map{row -> tuple(row.clarity_sample_id,row.id,row.clarity_pool_id,row.assay)}
+	.set{coyote_meta}
 
 
 /* Part1: QC */
@@ -31,8 +30,8 @@ process star_alignment{
 	
 	output:
 		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
-		set val(smpl_id), file ("${smpl_id}.Log.final.out") into star_logFinalOut_ch
-		file "${smpl_id}.Aligned.sortedByCoord.out.bam.bai" into star_sort_bai
+		set val(smpl_id), file("${smpl_id}.Log.final.out") into star_logFinalOut_ch
+		file("${smpl_id}.Aligned.sortedByCoord.out.bam.bai") into star_sort_bai
 		
 	script: 
 
@@ -117,7 +116,7 @@ process rseqc_genebody_coverage{
 			
 	output:
 		
-		file "*.geneBodyCoverage.txt" into gene_bodyCov_ch
+		set val(smpl_id), file("${smpl_id}.geneBodyCoverage.txt") into gene_bodyCov_ch
 	
 	script:
 
@@ -140,7 +139,7 @@ process provider{
 		
 	
 	output:
-		file "*.genotypes" into provider_output_ch
+		set val(smpl_id), file("${smpl_id}.genotypes") into provider_output_ch
 
 	script:
 
@@ -172,7 +171,7 @@ process star_fusion{
 		set val(smpl_id) , file(read1), file(read2) from read_files_star_fusion
 		
 	output:
-		file("${smpl_id}.star-fusion.fusion_predictions.tsv") optional true into star_fusion_agg_ch
+		set val(smpl_id), file("${smpl_id}.star-fusion.fusion_predictions.tsv") optional true into star_fusion_agg_ch
     	
 	script:
 
@@ -195,7 +194,7 @@ process star_fusion{
 
 process fusioncatcher {
 	errorStrategy 'ignore'
-	tag "${smpl_id}"
+	tag '${smpl_id}'
 	cpus 16 
 	publishDir "${params.outdir}/fusion", mode: 'copy'
 	
@@ -206,8 +205,8 @@ process fusioncatcher {
 		set val(smpl_id) , file(read1), file(read2) from read_files_fusioncatcher
     	
 	output:
-		file "${smpl_id}.final-list_candidate-fusion-genes.hg19.txt" into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
-		file "${smpl_id}.fusioncatcher.xls" into filter_fusion_ch
+		set val(smpl_id), file("${smpl_id}.final-list_candidate-fusion-genes.hg19.txt") into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
+		set val(smpl_id), file("${smpl_id}.fusioncatcher.xls") into filter_fusion_ch
 	
 	script:
 	option = params.singleEnd ? read1 : "${read1},${read2}"
@@ -283,7 +282,7 @@ process salmon{
 
 process create_expr_ref {
 
-	publishDir "${params.refbase}/salmon/sal", mode:'copy'
+	publishDir "${params.refbase}/salmon/ref", mode:'copy'
 	when:
 		params.create_exprRef
 	output:
@@ -333,11 +332,8 @@ process postaln_qc_rna {
 		params.combine 
 
 	input:
-		set val(smpl_id), file(star_final) from star_logFinalOut_ch
-		file (fusion) from final_list_fusionCatcher_ch
-		file (geneCov) from gene_bodyCov_ch
-		file (provIder) from provider_output_ch
-		set val(smpl_id),file(flendist) from flendist_ch
+		set val(smpl_id), file(star_final), file(fusion), file(geneCov), file(provIder), file(flendist) from star_logFinalOut_ch.join(final_list_fusionCatcher_ch.join(gene_bodyCov_ch.join(provider_output_ch.join(flendist_ch))))
+	
 	
 	output:
 		set val(smpl_id), file("${smpl_id}.STAR.rnaseq_QC") into final_QC 
@@ -370,9 +366,8 @@ process aggregate_fusion{
 	     params.combine
 
 	input:
-		file (fusionCatcher_file) from final_list_fusionCatcher_agg_ch
-		file (starFusion_file) from star_fusion_agg_ch
-		set val(smpl_id), file(fusionJaffa_file) from jaffa_csv_ch
+		set val(smpl_id), file(fusionCatcher_file), file(starFusion_file), file(fusionJaffa_file) from final_list_fusionCatcher_agg_ch.join(star_fusion_agg_ch.join(jaffa_csv_ch)).view()
+		
 
 	output:
 		set val(smpl_id), file("${smpl_id}.agg.vcf") into agg_vcf_ch 
@@ -390,15 +385,12 @@ process aggregate_fusion{
 
 
 // import result to coyote
-process imoprt_to_coyote {
+process import_to_coyote {
 	publishDir "${params.crondir}/coyote", mode: 'copy'
 
 	input:
-		set id1, file(fusion_report) from  star_fusion_report
-		set id2, file(agg_vcf) from  agg_vcf_ch
-		set id3, file(rnaseq_QC) from final_QC 
-		set id4, file(salmon_expr) from salmon_expr_ch 
-		set lab_id,clarity_id,pool_id,assay from coyote_meta
+		set clarity_id, file(fusion_report), file(agg_vcf), file(rnaseq_QC), file(salmon_expr), lab_id, pool_id, assay from star_fusion_report.join(agg_vcf_ch.join(final_QC.join(salmon_expr_ch.join(coyote_meta))))
+		
 	when:
 		params.coyote
 
