@@ -124,9 +124,9 @@ process rseqc_genebody_coverage{
 	script:
 	"""
 	
-	samtools view  -s 0.3 -b ${bam_f} -o ${smpl_id}.subsampl.bam
-	sambamba index --show-progress -t 8 ${smpl_id}.subsampl.bam
-	geneBody_coverage.py -i ${smpl_id}.subsampl.bam -r ${params.ref_rseqc_bed} -o ${smpl_id}
+	samtools view  -s 0.3 -b ${bam_f} -o ${smpl_id}.subsample.bam
+	sambamba index --show-progress -t 8 ${smpl_id}.subsample.bam
+	geneBody_coverage.py -i ${smpl_id}.subsample.bam -r ${params.ref_rseqc_bed} -o ${smpl_id}
 	"""
 	}
 
