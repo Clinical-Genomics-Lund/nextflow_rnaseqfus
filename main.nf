@@ -4,7 +4,7 @@ Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
     .map{ row-> tuple(row.clarity_sample_id, file(row.read1), file(row.read2)) }
-    .into {read_files_star_fusion; read_files_fusioncatcher; read_files_jaffa; read_files_star_align; read_files_salmon; read_files_fastqscreen}
+    .into {reads_starfusion; reads_fusioncatcher; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen}
 
 Channel
 	.fromPath(params.csv)
@@ -12,8 +12,9 @@ Channel
 	.map{row -> tuple(row.clarity_sample_id,row.id,row.clarity_pool_id,row.assay)}
 	.set{coyote_meta}
 
-
-/* Part1: QC */
+/**************************/
+/* Part1: Alignment & QC  */
+/**************************/
 process star_alignment{
 
 	errorStrategy 'ignore'
@@ -25,13 +26,13 @@ process star_alignment{
 		params.qc || params.star
 
 	input:
-		set val(smpl_id) , file(read1), file(read2) from read_files_star_align
+		set val(smpl_id) , file(read1), file(read2) from reads_align
 		
 	
 	output:
-		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into aligned_bam, star_sort_bam,star_sort_bam_1,star_sort_bam_2
+		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into qualimap_bam, provider_bam
 		set val(smpl_id), file("${smpl_id}.Log.final.out") into star_logFinalOut_ch
-		file("${smpl_id}.Aligned.sortedByCoord.out.bam.bai") into star_sort_bai
+		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam"),file("${smpl_id}.Aligned.sortedByCoord.out.bam.bai") into geneBody_bambai
 		
 	script: 
 
@@ -61,7 +62,7 @@ process fastqscreen{
 		params.fastqscreen 
 
 	input:
-		set val(smpl_id), file(read1), file(read2) from read_files_fastqscreen
+		set val(smpl_id), file(read1), file(read2) from reads_fastqscreen
 		
 
 	output:
@@ -86,7 +87,7 @@ process qualimap{
 		params.qualimap 
 
 	input:
-		set val(smpl_id), file(bam_f) from star_sort_bam
+		set val(smpl_id), file(bam_f) from qualimap_bam
 		
 	output:
 		file '*' into qualimap_ch
@@ -111,13 +112,14 @@ process rseqc_genebody_coverage{
 	
 	input :
 	
-		set val(smpl_id), file(bam_f) from star_sort_bam_1
-		file (bai_f) from star_sort_bai
+		set val(smpl_id),file(bam_f),file(bai_f) from geneBody_bambai.view()
+		
 			
 	output:
 		
 		set val(smpl_id), file("${smpl_id}.geneBodyCoverage.txt") into gene_bodyCov_ch
 	
+		//samtools view  -s 0.3 -b ${bam_f} -o ${smpl_id}.subsampled.bam
 	script:
 
 	"""
@@ -135,7 +137,7 @@ process provider{
 		params.qc || params.provider
 
 	input:
-		set val(smpl_id), file(bam_f) from star_sort_bam_2
+		set val(smpl_id), file(bam_f) from provider_bam
 		
 	
 	output:
@@ -168,7 +170,7 @@ process star_fusion{
 		params.star_fusion || params.fusion 
 	
 	input:
-		set val(smpl_id) , file(read1), file(read2) from read_files_star_fusion
+		set val(smpl_id) , file(read1), file(read2) from reads_starfusion
 		
 	output:
 		set val(smpl_id), file("${smpl_id}.star-fusion.fusion_predictions.tsv") optional true into star_fusion_agg_ch
@@ -202,7 +204,7 @@ process fusioncatcher {
 		params.fusioncatcher || params.fusion
 	
 	input:
-		set val(smpl_id) , file(read1), file(read2) from read_files_fusioncatcher
+		set val(smpl_id) , file(read1), file(read2) from reads_fusioncatcher
     	
 	output:
 		set val(smpl_id), file("${smpl_id}.final-list_candidate-fusion-genes.hg19.txt") into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
@@ -230,7 +232,7 @@ process jaffa{
 		params.jaffa || params.fusion
 	
 	input:
-		set val(smpl_id) , file(read1), file(read2) from  read_files_jaffa
+		set val(smpl_id) , file(read1), file(read2) from  reads_jaffa
 	
 	output:
 		set val(smpl_id) ,file ("${smpl_id}.jaffa_results.csv") into jaffa_csv_ch
@@ -262,7 +264,7 @@ process salmon{
 		params.quant 
 
 	input:
-		set val(smpl_id) , file(read1), file(read2) from read_files_salmon
+		set val(smpl_id) , file(read1), file(read2) from reads_salmon
 		
 		
 	output:
@@ -282,7 +284,7 @@ process salmon{
 
 process create_expr_ref {
 
-	publishDir "${params.refbase}/salmon/ref", mode:'copy'
+	publishDir "${params.refbase}/extract_expr_ref", mode:'copy'
 	when:
 		params.create_exprRef
 	output:
@@ -297,7 +299,7 @@ process create_expr_ref {
 process extract_expression {
 	
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}/quant", mode:'copy'
+	publishDir "${params.outdir}/finalResults", mode:'copy'
 
 	input:
 		set val(smpl_id), file(quants) from quant_ch // args[2] in both
@@ -308,13 +310,13 @@ process extract_expression {
 	output:
 
 		set val(smpl_id), file("${smpl_id}.salmon.expr") into salmon_expr_ch  
-		set val(smpl_id), file("${smpl_id}.STAR.fusionreport") into star_fusion_report //args[5] in classifier
+		set val(smpl_id), file("${smpl_id}.expr.classified") into classification_report //args[5] in classifier
 
 	script:
 
 	"""
 	extract_expression_fusion_ny.R  ${params.genesOfIntrest}  ${quants}  ${params.reference_expression_all}  ${smpl_id}.salmon.expr
-	fusion_classifier_report_ny.R  ${smpl_id} ${quants} ${params.hem_classifier_salmon} ${params.ensembl_annotation} ${smpl_id}.STAR.fusionreport
+	fusion_classifier_report_ny.R  ${smpl_id} ${quants} ${params.hem_classifier_salmon} ${params.ensembl_annotation} ${smpl_id}.expr.classified
 	
 	"""
 	}
@@ -389,7 +391,7 @@ process import_to_coyote {
 	publishDir "${params.crondir}/coyote", mode: 'copy'
 
 	input:
-		set clarity_id, file(fusion_report), file(agg_vcf), file(rnaseq_QC), file(salmon_expr), lab_id, pool_id, assay from star_fusion_report.join(agg_vcf_ch.join(final_QC.join(salmon_expr_ch.join(coyote_meta))))
+		set clarity_id, file(class_report), file(agg_vcf), file(rnaseq_QC), file(salmon_expr), lab_id, pool_id, assay from classification_report.join(agg_vcf_ch.join(final_QC.join(salmon_expr_ch.join(coyote_meta))))
 		
 	when:
 		params.coyote
@@ -402,7 +404,7 @@ process import_to_coyote {
 		group= 'fusion_validation_nf'
 	
 	"""
-	echo "import_fusion_to_coyote.pl --classification ${params.outdir}/quant/${fusion_report} --fusions ${params.outdir}/finalResults/${agg_vcf} --id ${id} --qc ${params.outdir}/finalResults/${rnaseq_QC} --group ${group} --expr ${params.outdir}/quant/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.fusion.validation.coyote
+	echo "import_fusion_to_coyote.pl --classification ${params.outdir}/finalResults/${class_report} --fusions ${params.outdir}/finalResults/${agg_vcf} --id ${id} --qc ${params.outdir}/finalResults/${rnaseq_QC} --group ${group} --expr ${params.outdir}/finalResults/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.fusion.validation.coyote
 
 	"""
 	}
