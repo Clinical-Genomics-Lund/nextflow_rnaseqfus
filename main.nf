@@ -32,10 +32,10 @@ process star_alignment{
 		
 	
 	output:
-		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into qualimap_bam, provider_bam
+		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into qualimap_bam, provider_bam, geneBody_bam
 		set val(smpl_id), file("${smpl_id}.Log.final.out") into star_logFinalOut_ch
-		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam"),file("${smpl_id}.Aligned.sortedByCoord.out.bam.bai") into geneBody_bambai
-		
+		//set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam"),file("${smpl_id}.Aligned.sortedByCoord.out.bam.bai") into geneBody_bambai
+		//sambamba index --show-progress -t 8 ${smpl_id}.Aligned.sortedByCoord.out.bam
 	script: 
 
 	"""
@@ -47,7 +47,6 @@ process star_alignment{
 		--limitBAMsortRAM 10000000000 
 
 	mv Aligned.sortedByCoord.out.bam  ${smpl_id}.Aligned.sortedByCoord.out.bam
-	sambamba index --show-progress -t 8 ${smpl_id}.Aligned.sortedByCoord.out.bam 
 	mv Log.final.out ${smpl_id}.Log.final.out
 	"""	
 	}
@@ -114,7 +113,7 @@ process rseqc_genebody_coverage{
 	
 	input :
 	
-		set val(smpl_id),file(bam_f),file(bai_f) from geneBody_bambai.view()
+		set val(smpl_id),file(bam_f) from geneBody_bam
 		
 			
 	output:
@@ -123,9 +122,11 @@ process rseqc_genebody_coverage{
 	
 		//samtools view  -s 0.3 -b ${bam_f} -o ${smpl_id}.subsampled.bam
 	script:
-
 	"""
-	geneBody_coverage.py -i ${bam_f} -r ${params.ref_rseqc_bed} -o ${smpl_id}
+	
+	samtools view  -s 0.3 -b ${bam_f} -o ${smpl_id}.subsampl.bam
+	sambamba index --show-progress -t 8 ${smpl_id}.subsampl.bam
+	geneBody_coverage.py -i ${smpl_id}.subsampl.bam -r ${params.ref_rseqc_bed} -o ${smpl_id}
 	"""
 	}
 
