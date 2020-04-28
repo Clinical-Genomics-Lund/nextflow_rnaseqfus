@@ -21,10 +21,11 @@ fi
 scp $DIR/main.nf $DEST_HOST:$PIPELINE_DEST
 
 # Copy configuration file
-#scp $DIR/configs/nextflow.hopper.config $DEST_HOST:$PIPELINE_DEST/nextflow.config
+scp $DIR/configs/nextflow.hopper.config $DEST_HOST:$PIPELINE_DEST/nextflow.config
 
 # Copy other files
-#scp -r $DIR/bin $DEST_HOST:$PIPELINE_DEST
+scp -r $DIR/bin $DEST_HOST:$PIPELINE_DEST
+
 #Added by sima:
 #scp $DIR/example.csv $DEST_HOST:$PIPELINE_DEST
 #scp $DIR/run_hopper.sh $DEST_HOST:$PIPELINE_DEST

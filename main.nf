@@ -1,5 +1,7 @@
 #!/usr/bin/dev nextflow
 
+OUTDIR = params.outdir+'/'+params.subdir
+
 Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
@@ -19,7 +21,7 @@ process star_alignment{
 
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/bam", mode :'copy'
+	publishDir "$OUTDIR/bam", mode :'copy'
 	cpus = 16
 	memory 40.GB
 	when:
@@ -56,7 +58,7 @@ process fastqscreen{
 	//scratch true
 	tag "${smpl_id}"
 	cpus = 8
-	publishDir "${params.outdir}/qc/${smpl_id}.fastqscreen" , mode :'copy'
+	publishDir "$OUTDIR/qc/${smpl_id}.fastqscreen" , mode :'copy'
 	
 	when:
 		params.fastqscreen 
@@ -79,7 +81,7 @@ process fastqscreen{
 process qualimap{
 
 	tag  "${smpl_id}"
-	publishDir "${params.outdir}/qc", mode :'copy'
+	publishDir "$OUTDIR/qc", mode :'copy'
 	errorStrategy 'ignore'
 	memory 18.GB
 
@@ -102,7 +104,7 @@ process qualimap{
 	
 process rseqc_genebody_coverage{
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/qc", mode:'copy'
+	publishDir "$OUTDIR/qc", mode:'copy'
 	errorStrategy 'ignore'
 	memory 10.GB
 	cpus 1
@@ -130,7 +132,7 @@ process rseqc_genebody_coverage{
 process provider{
 
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/qc" , mode:'copy'
+	publishDir "$OUTDIR/qc" , mode:'copy'
 	errorStrategy 'ignore'
 
 	when:
@@ -164,7 +166,7 @@ process star_fusion{
 	tag "${smpl_id}"
 	cpus 18
 	memory  70.GB
-	publishDir "${params.outdir}/fusion", mode: 'copy'
+	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
 	when:
 		params.star_fusion || params.fusion 
@@ -198,7 +200,7 @@ process fusioncatcher {
 	errorStrategy 'ignore'
 	tag '${smpl_id}'
 	cpus 16 
-	publishDir "${params.outdir}/fusion", mode: 'copy'
+	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
 	when: 
 		params.fusioncatcher || params.fusion
@@ -224,7 +226,7 @@ process fusioncatcher {
 process jaffa{
 	tag "${smpl_id}"
 	errorStrategy 'ignore'
-	publishDir  "${params.outdir}/fusion", mode: 'copy'
+	publishDir  "$OUTDIR/fusion", mode: 'copy'
 	memory 75.GB 
 	cpus 18
 	
@@ -257,7 +259,7 @@ process salmon{
 
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
-	publishDir "${params.outdir}/quant", mode:'copy'
+	publishDir "$OUTDIR/quant", mode:'copy'
 	cpus = 8
 
 	when:
@@ -299,7 +301,7 @@ process create_expr_ref {
 process extract_expression {
 	
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}/finalResults", mode:'copy'
+	publishDir "$OUTDIR/finalResults", mode:'copy'
 
 	input:
 		set val(smpl_id), file(quants) from quant_ch // args[2] in both
@@ -327,7 +329,7 @@ process extract_expression {
 /****************************************************/
  
 process postaln_qc_rna {
-	publishDir "${params.outdir}/finalResults" , mode:'copy'
+	publishDir "$OUTDIR/finalResults" , mode:'copy'
 	errorStrategy 'ignore'
 
 	when:
@@ -362,7 +364,7 @@ process postaln_qc_rna {
 // aggregate fusion files
 process aggregate_fusion{
 	errorStrategy 'ignore'
-	publishDir "${params.outdir}/finalResults" , mode: 'copy'
+	publishDir "$OUTDIR/finalResults" , mode: 'copy'
 
 	when :
 	     params.combine
@@ -404,7 +406,7 @@ process import_to_coyote {
 		group= 'fusion_validation_nf'
 	
 	"""
-	echo "import_fusion_to_coyote.pl --classification ${params.outdir}/finalResults/${class_report} --fusions ${params.outdir}/finalResults/${agg_vcf} --id ${id} --qc ${params.outdir}/finalResults/${rnaseq_QC} --group ${group} --expr ${params.outdir}/finalResults/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.fusion.validation.coyote
+	echo "import_fusion_to_coyote.pl --classification $OUTDIR/finalResults/${class_report} --fusions $OUTDIR/finalResults/${agg_vcf} --id ${id} --qc $OUTDIR/finalResults/${rnaseq_QC} --group ${group} --expr $OUTDIR/finalResults/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.fusion.validation.coyote
 
 	"""
 	}
