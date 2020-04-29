@@ -12,16 +12,6 @@ From:nfcore/base
 	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2/x86_64-linux-thread-multi/
 	export PERL5LIB=$PERL5LIB:/opt/bin/
 
-	# iF StarFusion manuall installation:
-	#export PERL5LIB=$PERL5LIB:/opt/conda/pkgs/
-	##export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/PerlLib/
-	##export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/STAR-Fusion/FusionInspector/PerlLib/
-	#export PERL5LIB= /opt/starFusion/STAR-Fusion-v1.8.1/FusionFilter/lib/
-	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/FusionInspector/FusionFilter/lib/
-	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/FusionInspector/PerlLib/
-	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/PerlLib/
-	#export PERL5LIB=/opt/starFusion/STAR-Fusion-v1.8.1/ctat-genome-lib-builder/lib/
-
 	# if fuseq :
 	#export PATH=/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/bin:$PATH
 	#export LD_LIBRARY_PATH=-"/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/lib":LD_LIBRARY_PATH #This gives error! :(	has to be solved!
@@ -75,17 +65,6 @@ From:nfcore/base
 	#bash configure.sh
 	#git clone https://github.com/nghiavtr/FuSeq.git
 	
-	#Install starFusion from full package, v.1.8.1 
-	#mkdir /opt/starFusion
-	#cd /opt/starFusion
-	#wget https://github.com/STAR-Fusion/STAR-Fusion/releases/download/STAR-Fusion-v1.8.1/STAR-Fusion-v1.8.1.FULL.tar.gz
-	#tar -xzvf STAR-Fusion-v1.8.1.FULL.tar.gz
-	#cd STAR-Fusion-v1.8.1
-	#make
-	#cd 
-	
-	#install starFusion singularity container : not working inside this container but outside. 
-	#wget https://data.broadinstitute.org/Trinity/CTAT_SINGULARITY/star-fusion.v1.8.1.simg
 
 	/opt/conda/bin/conda clean -a	
 	
