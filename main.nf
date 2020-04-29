@@ -14,9 +14,12 @@ Channel
 	.map{row -> tuple(row.clarity_sample_id,row.id,row.clarity_pool_id,row.assay)}
 	.set{coyote_meta}
 
-/**************************/
-/* Part1: Alignment & QC  */
-/**************************/
+
+
+/***********************************/
+/*      Part1: Alignment & QC     */
+/**********************************/
+
 process star_alignment{
 
 	errorStrategy 'ignore'
@@ -34,8 +37,8 @@ process star_alignment{
 	output:
 		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into qualimap_bam, provider_bam, geneBody_bam
 		set val(smpl_id), file("${smpl_id}.Log.final.out") into star_logFinalOut_ch
-		//set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam"),file("${smpl_id}.Aligned.sortedByCoord.out.bam.bai") into geneBody_bambai
-		//sambamba index --show-progress -t 8 ${smpl_id}.Aligned.sortedByCoord.out.bam
+		
+		
 	script: 
 
 	"""
@@ -120,10 +123,10 @@ process rseqc_genebody_coverage{
 		
 		set val(smpl_id), file("${smpl_id}.geneBodyCoverage.txt") into gene_bodyCov_ch
 	
-		//samtools view  -s 0.3 -b ${bam_f} -o ${smpl_id}.subsampled.bam
+		
 	script:
-	"""
 	
+	"""
 	samtools view  -s 0.3 -b ${bam_f} -o ${smpl_id}.subsample.bam
 	sambamba index --show-progress -t 8 ${smpl_id}.subsample.bam
 	geneBody_coverage.py -i ${smpl_id}.subsample.bam -r ${params.ref_rseqc_bed} -o ${smpl_id}
@@ -156,9 +159,8 @@ process provider{
 	
 	
 	
-
 /* ******************************** */	
-/* Part2 : fusion identification  */
+/* Part2 : fusion identification    */
 /* ******************************** */
 
 process star_fusion{
@@ -252,9 +254,9 @@ process jaffa{
 
 
 
-/***************************************************/
+/*****************************************/
 /*  Part3 : Expression quantification    */
-/****************************************************/
+/*****************************************/
 
 process salmon{
 
@@ -326,8 +328,8 @@ process extract_expression {
 
 
 /***************************************************/
-/*  Part 4: Post processing                         */
-/****************************************************/
+/*          Part 4: Post processing                */
+/***************************************************/
  
 process postaln_qc_rna {
 	publishDir "$OUTDIR/finalResults" , mode:'copy'
@@ -362,6 +364,7 @@ process postaln_qc_rna {
 /***********************************************/
 /* Part 5 :  Prepare for and upload to Coyote  */
 /***********************************************/
+
 // aggregate fusion files
 process aggregate_fusion{
 	errorStrategy 'ignore'
@@ -389,7 +392,7 @@ process aggregate_fusion{
 	}
 
 
-// import result to coyote
+// import files to coyote
 process import_to_coyote {
 	publishDir "${params.crondir}/coyote", mode: 'copy'
 
