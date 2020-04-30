@@ -230,7 +230,7 @@ process jaffa{
 	tag "${smpl_id}"
 	errorStrategy 'ignore'
 	publishDir  "$OUTDIR/fusion", mode: 'copy'
-	memory 75.GB 
+	memory 80.GB 
 	cpus 18
 	
 	when:
@@ -246,11 +246,10 @@ process jaffa{
     	script:
 
    	"""
-   	bpipe run -m 64GB -n ${task.cpus} -p genome=hg38 -p refBase="${params.jaffa_base}" ${params.jaffa_file}  ${read1} ${read2}
+   	bpipe run -m 75GB -n ${task.cpus} -p genome=hg38 -p refBase="${params.jaffa_base}" ${params.jaffa_file}  ${read1} ${read2}
 	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
    	"""
 	}
-
 
 
 
