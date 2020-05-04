@@ -230,8 +230,8 @@ process jaffa{
 	tag "${smpl_id}"
 	errorStrategy 'ignore'
 	publishDir  "$OUTDIR/fusion", mode: 'copy'
-	memory 80.GB 
-	cpus 18
+	memory 75.GB 
+	cpus 4
 	
 	when:
 		params.jaffa || params.fusion
