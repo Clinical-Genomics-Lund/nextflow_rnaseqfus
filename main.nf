@@ -12,8 +12,12 @@ Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
 	.map{row -> tuple(row.clarity_sample_id,row.id,row.clarity_pool_id,row.assay)}
-	.set{coyote_meta}
-
+	.into{coyote_meta;cmd_meta}
+Channel
+	.fromPath(params.csv)
+	.splitCsv(header:true)
+	.map{row -> tuple(row.clarity_sample_id, row.read1)}
+	.set {reads_meta}
 
 
 /***********************************/
@@ -201,7 +205,7 @@ process star_fusion{
 
 process fusioncatcher {
 	errorStrategy 'ignore'
-	tag '${smpl_id}'
+	tag "${smpl_id}"
 	cpus 16 
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
@@ -342,7 +346,7 @@ process postaln_qc_rna {
 	
 	
 	output:
-		set val(smpl_id), file("${smpl_id}.STAR.rnaseq_QC") into final_QC 
+		set val(smpl_id), file("${smpl_id}.STAR.rnaseq_QC") into final_QC,finalqc_cmd 
 
 	
 	script:
@@ -415,3 +419,25 @@ process import_to_coyote {
 	}
 
 
+process  register{
+	 publishDir "${params.crondir}/qc", mode: 'copy', overwrite: true
+	 cpus 1
+	 memory '8 GB'
+	 time '1h'
+	 input:
+		set clarity_id, file(postalignqc), fastq_r1, id, pool_id, assay from finalqc_cmd.join(reads_meta.join(cmd_meta)) 
+	 output:
+		set val(clarity_id), file("${id}.cdm")
+	 script:
+	 
+	 parts = fastq_r1.toString().split('/')
+	 parts.println()
+	 idx= parts.findIndexOf {it ==~ /......_......_...._........../}
+	 rundir= parts[0..idx].join("/")
+	 
+	 
+	"""
+	echo "--run-folder ${rundir} --sample-id ${id} --assay rnaseq-fusion --qc $OUTDIR/finalResults/${postalignqc}" > ${id}.cdm 
+	"""
+
+}
