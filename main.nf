@@ -2,6 +2,36 @@
 
 OUTDIR = params.outdir+'/'+params.subdir
 
+
+csv = file(params.csv)
+
+workflow.onComplete {
+
+	def msg = """\
+		Pipeline execution summary
+		---------------------------
+		Completed at: ${workflow.complete}
+		Duration    : ${workflow.duration}
+		Success     : ${workflow.success}
+		scriptFile  : ${workflow.scriptFile}
+		workDir     : ${workflow.workDir}
+		exit status : ${workflow.exitStatus}
+		errorMessage: ${workflow.errorMessage}
+		errorReport :
+		"""
+		.stripIndent()
+	def error = """\
+		${workflow.errorReport}
+		"""
+		.stripIndent()
+
+	base = csv.getBaseName()
+	logFile = file("/fs1/results/cron/logs/" + base + ".complete")
+	logFile.text = msg
+	logFile.append(error)
+}
+
+
 Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
@@ -12,7 +42,7 @@ Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
 	.map{row -> tuple(row.clarity_sample_id,row.id,row.clarity_pool_id,row.assay)}
-	.into{coyote_meta;cmd_meta}
+	.into{coyote_meta;cdm_meta}
 Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
@@ -223,7 +253,7 @@ process fusioncatcher {
 	option = params.singleEnd ? read1 : "${read1},${read2}"
     	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     	"""
-   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} -o ./${smpl_id}.fusioncatcher
+   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus}  -o ./${smpl_id}.fusioncatcher
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
 	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.hg19.txt ${smpl_id}.final-list_candidate-fusion-genes.hg19.txt
     	"""
@@ -419,13 +449,13 @@ process import_to_coyote {
 	}
 
 
-process  register{
+process  register_to_cdm{
 	 publishDir "${params.crondir}/qc", mode: 'copy', overwrite: true
 	 cpus 1
 	 memory '8 GB'
 	 time '1h'
 	 input:
-		set clarity_id, file(postalignqc), fastq_r1, id, pool_id, assay from finalqc_cmd.join(reads_meta.join(cmd_meta)) 
+		set clarity_id, file(postalignqc), fastq_r1, id, pool_id, assay from finalqc_cmd.join(reads_meta.join(cdm_meta)) 
 	 output:
 		set val(clarity_id), file("${id}.cdm")
 	 script:
