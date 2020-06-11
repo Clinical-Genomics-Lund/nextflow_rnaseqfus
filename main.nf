@@ -436,14 +436,14 @@ process import_to_coyote {
 		params.coyote
 
 	output:
-		file("${id}.fusion.validation.coyote")
+		file("${id}.coyote")
 	
 	script:
 		id= "${lab_id}-fusions"
 		group= 'fusion'
 	
 	"""
-	echo "import_fusion_to_coyote.pl --classification $OUTDIR/finalResults/${class_report} --fusions $OUTDIR/finalResults/${agg_vcf} --id ${id} --qc $OUTDIR/finalResults/${rnaseq_QC} --group ${group} --expr $OUTDIR/finalResults/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.fusion.coyote
+	echo "import_fusion_to_coyote.pl --classification $OUTDIR/finalResults/${class_report} --fusions $OUTDIR/finalResults/${agg_vcf} --id ${id} --qc $OUTDIR/finalResults/${rnaseq_QC} --group ${group} --expr $OUTDIR/finalResults/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.coyote
 
 	"""
 	}
