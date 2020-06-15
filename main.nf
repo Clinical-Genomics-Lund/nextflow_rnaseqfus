@@ -69,7 +69,7 @@ process star_alignment{
 		
 	
 	output:
-		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into qualimap_bam, provider_bam, geneBody_bam
+		set val(smpl_id), file("${smpl_id}.Aligned.sortedByCoord.out.bam") into qualimap_bam, provider_bam, geneBody_bam, bamidx
 		set val(smpl_id), file("${smpl_id}.Log.final.out") into star_logFinalOut_ch
 		
 		
@@ -87,6 +87,20 @@ process star_alignment{
 	mv Log.final.out ${smpl_id}.Log.final.out
 	"""	
 	}
+	
+process index_bam {
+
+	publishDir "$OUTDIR/bam", mode :'copy'
+	 
+	input:
+		set val(smpl_id), file(bam) from  bamidx
+	output:
+		file "${smpl_id}.Aligned.sortedByCoord.out.bam.bai" 
+	script:
+	"""
+	sambamba index --show-progress -t 8 ${bam}
+	"""	
+}  
 
 process fastqscreen{ 
 
@@ -112,7 +126,6 @@ process fastqscreen{
 	fastq_screen --conf ${params.genome_conf} --aligner bowtie2 --force ${read1} ${read2}
 	"""
 	}
-
 
 process qualimap{
 
@@ -268,7 +281,7 @@ process jaffa{
 	cpus 4
 	
 	when:
-		params.jaffa || params.fusion
+		params.jaffa 
 	
 	input:
 		set val(smpl_id) , file(read1), file(read2) from  reads_jaffa
@@ -407,7 +420,8 @@ process aggregate_fusion{
 	     params.combine
 
 	input:
-		set val(smpl_id), file(fusionCatcher_file), file(starFusion_file), file(fusionJaffa_file) from final_list_fusionCatcher_agg_ch.join(star_fusion_agg_ch.join(jaffa_csv_ch)).view()
+		set val(smpl_id), file(fusionCatcher_file), file(starFusion_file) from final_list_fusionCatcher_agg_ch.join(star_fusion_agg_ch)
+		//set val(smpl_id), file(fusionCatcher_file), file(starFusion_file), file(fusionJaffa_file) from final_list_fusionCatcher_agg_ch.join(star_fusion_agg_ch.join(jaffa_csv_ch)).view()
 		
 
 	output:
@@ -419,8 +433,7 @@ process aggregate_fusion{
 	aggregate_fusions.pl \\
 		--fusioncatcher ${fusionCatcher_file} \\
 		--starfusion ${starFusion_file} \\
-		--jaffa ${fusionJaffa_file} \\
-		--priority fusioncatcher,jaffa,starfusion > ${smpl_id}.agg.vcf
+		--priority fusioncatcher,starfusion > ${smpl_id}.agg.vcf
 	"""
 	}
 
