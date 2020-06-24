@@ -35,19 +35,23 @@ workflow.onComplete {
 Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
-    .map{ row-> tuple(row.clarity_sample_id, file(row.read1), file(row.read2)) }
-    .into {reads_starfusion; reads_fusioncatcher; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen}
+    .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }
+    .into {reads_starfusion; reads_fusioncatcher; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta}
 
 Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
-	.map{row -> tuple(row.clarity_sample_id,row.id,row.clarity_pool_id,row.assay)}
+	.map{row -> tuple(row.id,row.clarity_sample_id, row.clarity_pool_id)}
 	.into{coyote_meta;cdm_meta}
+
+/*	
 Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
-	.map{row -> tuple(row.clarity_sample_id, row.read1)}
-	.set {reads_meta}
+	.map{row -> tuple(row.id, row.clarity_sample_id)}
+	.set {_meta}
+
+*/
 
 
 /***********************************/
@@ -95,7 +99,8 @@ process index_bam {
 	input:
 		set val(smpl_id), file(bam) from  bamidx
 	output:
-		file "${smpl_id}.Aligned.sortedByCoord.out.bam.bai" 
+		file "${smpl_id}.Aligned.sortedByCoord.out.bam.bai"
+		
 	script:
 	"""
 	sambamba index --show-progress -t 8 ${bam}
@@ -443,7 +448,7 @@ process import_to_coyote {
 	publishDir "${params.crondir}/coyote", mode: 'copy'
 
 	input:
-		set clarity_id, file(class_report), file(agg_vcf), file(rnaseq_QC), file(salmon_expr), lab_id, pool_id, assay from classification_report.join(agg_vcf_ch.join(final_QC.join(salmon_expr_ch.join(coyote_meta))))
+		set smpl_id, file(class_report), file(agg_vcf), file(rnaseq_QC), file(salmon_expr), clarity_id, pool_id from classification_report.join(agg_vcf_ch.join(final_QC.join(salmon_expr_ch.join(coyote_meta))))
 		
 	when:
 		params.coyote
@@ -452,7 +457,7 @@ process import_to_coyote {
 		file("${id}.coyote")
 	
 	script:
-		id= "${lab_id}-fusions"
+		id= "${smpl_id}-fusions"
 		group= 'fusion'
 	
 	"""
@@ -468,9 +473,9 @@ process  register_to_cdm{
 	 memory '8 GB'
 	 time '1h'
 	 input:
-		set clarity_id, file(postalignqc), fastq_r1, id, pool_id, assay from finalqc_cmd.join(reads_meta.join(cdm_meta)) 
+		set smpl_id, file(postalignqc), fastq_r1, fatq_r2 ,clarity_id, pool_id from finalqc_cmd.join(reads_meta.join(cdm_meta)) 
 	 output:
-		set val(clarity_id), file("${id}.cdm")
+		set val(smpl_id), file("${smpl_id}.cdm")
 	 script:
 	 
 	 parts = fastq_r1.toString().split('/')
@@ -480,7 +485,8 @@ process  register_to_cdm{
 	 
 	 
 	"""
-	echo "--run-folder ${rundir} --sample-id ${id} --assay rnaseq-fusion --qc $OUTDIR/finalResults/${postalignqc}" > ${id}.cdm 
+	echo "--run-folder ${rundir} --sample-id ${smpl_id} --assay rnaseq-fusion --qc $OUTDIR/finalResults/${postalignqc}" > ${smpl_id}.cdm 
 	"""
 
 }
+
