@@ -44,14 +44,7 @@ Channel
 	.map{row -> tuple(row.id,row.clarity_sample_id, row.clarity_pool_id)}
 	.into{coyote_meta;cdm_meta}
 
-/*	
-Channel
-	.fromPath(params.csv)
-	.splitCsv(header:true)
-	.map{row -> tuple(row.id, row.clarity_sample_id)}
-	.set {_meta}
 
-*/
 
 
 /***********************************/
@@ -254,7 +247,7 @@ process star_fusion{
 process fusioncatcher {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
-	cpus 16 
+	cpus 20 
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
 	when: 
@@ -271,7 +264,7 @@ process fusioncatcher {
 	option = params.singleEnd ? read1 : "${read1},${read2}"
     	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     	"""
-   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 1383067  -o ./${smpl_id}.fusioncatcher
+   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 2000000  -o ./${smpl_id}.fusioncatcher
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
 	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.hg19.txt ${smpl_id}.final-list_candidate-fusion-genes.hg19.txt
     	"""
