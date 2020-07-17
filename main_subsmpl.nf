@@ -4,7 +4,7 @@ OUTDIR = params.outdir+'/'+params.subdir
 
 
 csv = file(params.csv)
-/*
+
 workflow.onComplete {
 
 	def msg = """\
@@ -31,7 +31,7 @@ workflow.onComplete {
 	logFile.append(error)
 }
 
-*/
+
 Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
