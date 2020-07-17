@@ -52,6 +52,7 @@ Channel
 /**********************************/
 
 process subsampling_fastqs {
+	//Downsample fastqs to 60000000. To change it shall be done in the subsampling.sh script located in bin directory
 	memory 75.GB
 	when:
 		params.subsampling
@@ -65,10 +66,10 @@ process subsampling_fastqs {
 	//n_reads = Files.lines($read1).count() / 4 
 
 	//n_reads=$(zcat ${read1} | grep  '@'|wc -l)
-	n_sub=10000000
+	//n_sub=10000000
 	
 	"""
-	bash subsampling.sh $read1 $read2 $n_sub
+	bash subsampling.sh $read1 $read2 
 	mv  read1_sub.fastq.gz  ${smpl_id}_read1_sub.fastq.gz
 	mv  read2_sub.fastq.gz  ${smpl_id}_read2_sub.fastq.gz
 	"""
