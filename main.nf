@@ -248,7 +248,10 @@ process fusioncatcher {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
 	cpus 20 
+<<<<<<< HEAD
 	cache 'deep'
+=======
+>>>>>>> ccacaa0660f0269188b255f44abf36ce404d5ef2
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
 	when: 
@@ -265,7 +268,11 @@ process fusioncatcher {
 	option = params.singleEnd ? read1 : "${read1},${read2}"
     	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     	"""
+<<<<<<< HEAD
    	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 3500000  -o ./${smpl_id}.fusioncatcher
+=======
+   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 2000000  -o ./${smpl_id}.fusioncatcher
+>>>>>>> ccacaa0660f0269188b255f44abf36ce404d5ef2
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
 	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.txt ${smpl_id}.final-list_candidate-fusion-genes.txt
     	"""
