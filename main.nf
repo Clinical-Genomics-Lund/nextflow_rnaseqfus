@@ -44,14 +44,7 @@ Channel
 	.map{row -> tuple(row.id,row.clarity_sample_id, row.clarity_pool_id)}
 	.into{coyote_meta;cdm_meta}
 
-/*	
-Channel
-	.fromPath(params.csv)
-	.splitCsv(header:true)
-	.map{row -> tuple(row.id, row.clarity_sample_id)}
-	.set {_meta}
 
-*/
 
 
 /***********************************/
@@ -254,7 +247,8 @@ process star_fusion{
 process fusioncatcher {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
-	cpus 16 
+	cpus 20 
+	cache 'deep'
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
 	when: 
@@ -264,16 +258,16 @@ process fusioncatcher {
 		set val(smpl_id) , file(read1), file(read2) from reads_fusioncatcher
     	
 	output:
-		set val(smpl_id), file("${smpl_id}.final-list_candidate-fusion-genes.hg19.txt") into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
+		set val(smpl_id), file("${smpl_id}.final-list_candidate-fusion-genes.txt") into final_list_fusionCatcher_ch, final_list_fusionCatcher_agg_ch
 		set val(smpl_id), file("${smpl_id}.fusioncatcher.xls") into filter_fusion_ch
 	
 	script:
 	option = params.singleEnd ? read1 : "${read1},${read2}"
     	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     	"""
-   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 1383067  -o ./${smpl_id}.fusioncatcher
+   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 3500000  -o ./${smpl_id}.fusioncatcher
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
-	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.hg19.txt ${smpl_id}.final-list_candidate-fusion-genes.hg19.txt
+	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.txt ${smpl_id}.final-list_candidate-fusion-genes.txt
     	"""
 	}
 
