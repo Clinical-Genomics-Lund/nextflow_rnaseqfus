@@ -36,7 +36,7 @@ Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
     .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }
-    .into {reads_starfusion; reads_fusioncatcher; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta}
+    .into {reads_starfusion; reads_sub; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta}
 
 Channel
 	.fromPath(params.csv)
@@ -50,6 +50,31 @@ Channel
 /***********************************/
 /*      Part1: Alignment & QC     */
 /**********************************/
+if (!params.subsampling) {
+
+   reads_fusioncatcher =Channel
+   .fromPath(params.csv)
+   .splitCsv(header:true)
+   .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }.view()
+
+}else {
+      process subsampling_fastqs {
+        //Downsample fastqs to 65000000. You can hange this  value in the subsampling.sh script located in ./bin
+	memory 75.GB 
+
+	input:
+		set val(smpl_id) , read1, read2 from reads_sub
+	output:
+		set val(smpl_id) , file("${smpl_id}_read1_sub.fastq.gz"), file("${smpl_id}_read2_sub.fastq.gz") into reads_fusioncatcher
+
+	script:
+	"""
+	bash subsampling.sh $read1 $read2
+	mv  read1_sub.fastq.gz  ${smpl_id}_read1_sub.fastq.gz
+	mv  read2_sub.fastq.gz  ${smpl_id}_read2_sub.fastq.gz
+	"""
+	}
+}
 
 process star_alignment{
 
@@ -153,7 +178,7 @@ process rseqc_genebody_coverage{
 	tag "${smpl_id}"
 	publishDir "$OUTDIR/qc", mode:'copy'
 	errorStrategy 'ignore'
-	memory 10.GB
+	
 	cpus 1
 	
 	when:
@@ -213,7 +238,7 @@ process star_fusion{
 	//scratch true
 	tag "${smpl_id}"
 	cpus 18
-	memory  70.GB
+	memory  60.GB
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
 	when:
@@ -248,6 +273,10 @@ process fusioncatcher {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
 	cpus 20 
+	memory 90.GB
+	scratch true
+
+
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 	
 	when: 
@@ -264,11 +293,12 @@ process fusioncatcher {
 	option = params.singleEnd ? read1 : "${read1},${read2}"
     	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     	"""
-   	fusioncatcher.py  -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 2000000  -o ./${smpl_id}.fusioncatcher
+   	fusioncatcher.py -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 5000000 -o ./${smpl_id}.fusioncatcher
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
 	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.txt ${smpl_id}.final-list_candidate-fusion-genes.txt
     	"""
 	}
+
 
 
 process jaffa{
@@ -307,7 +337,8 @@ process salmon{
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
 	publishDir "$OUTDIR/quant", mode:'copy'
-	cpus = 8
+	cpus  8
+	memory 24.GB
 
 	when:
 		params.quant 
@@ -377,7 +408,7 @@ process extract_expression {
  
 process postaln_qc_rna {
 	publishDir "$OUTDIR/finalResults" , mode:'copy'
-	errorStrategy 'ignore'
+	
 
 	when:
 		params.combine 
@@ -411,7 +442,7 @@ process postaln_qc_rna {
 
 // aggregate fusion files
 process aggregate_fusion{
-	errorStrategy 'ignore'
+	
 	publishDir "$OUTDIR/finalResults" , mode: 'copy'
 
 	when :
