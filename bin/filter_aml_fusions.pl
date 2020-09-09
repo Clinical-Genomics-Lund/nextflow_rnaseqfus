@@ -6,7 +6,7 @@ use Data::Dumper;
 
 my $dir = shift;
 
-my @files = File::Find::Rule->file->name("final-list_candidate-fusion-genes.hg19.txt")->in($dir);
+my @files = File::Find::Rule->file->name("final-list_candidate-fusion-genes.txt")->in($dir);
 
 #print Dumper @files;
 
