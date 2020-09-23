@@ -1,72 +1,38 @@
-Bootstrap:docker
-From:nfcore/base
+Bootstrap: docker
+From: nfcore/base:1.7
 
 %labels
 	MAINTAINER Sima Rahimi <sima.rahimi@skane.se>
 	DESCRIPTION Singularity container for CMD RNS-seq fusion genes pipeline
-	
 
 %environment
-	PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:/opt/bin:/opt/conda/envs/CMD-RNASEQFUS-STARFUS/bin/:/opt/starFusion/STAR-Fusion-v1.8.1/:/opt/fusioncatcher/bin:$PATH
+        PATH=/opt/conda/envs/CMD-RNASEQFUS/bin/:/opt/bin:/opt/conda/envs/CMD-RNASEQFUS-STARFUS/bin/:/opt/starFusion/STAR-Fusion-v1.8.1/:/opt/fusioncatcher/bin:$PATH
 	export PERL5LIB=/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2
 	export PERL5LIB=$PERL5LIB:/opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2/x86_64-linux-thread-multi/
 	export PERL5LIB=$PERL5LIB:/opt/bin/
-
-	# if fuseq :
-	#export PATH=/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/bin:$PATH
-	#export LD_LIBRARY_PATH=-"/opt/fuseq/FuSeq_v1.1.2_linux_x86-64/linux/lib":LD_LIBRARY_PATH #This gives error! :(	has to be solved!
-
-
 %files
-        environment.yml /
-#	environment_starfusion.yml /
+	environment.yml /
 	../bin/ /opt
 	../bin/ /
-	
 
-		
 %post
 	rm -rf /var/lib/apt/lists/*
-	apt -y clean
-	apt -y update
-	#apt -y install libz-dev build-essential gettext cmake libxml2-dev libcurl4-openssl-dev libssl-dev make libbz2-dev libkrb5-dev 
-	apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyxl default-jdk nano
-	apt-get install -y libopenblas-dev r-base-core libcurl4-openssl-dev libopenmpi-dev openmpi-bin openmpi-common openmpi-doc 
+        apt -y clean
+        apt -y update
+        apt -y install libz-dev build-essential gettext cmake libxml2-dev libcurl4-openssl-dev libssl-dev make libbz2-dev libkrb5-dev
+        apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyx\
+l nano
+	apt-get -y install default-jdk
+        apt-get install -y libopenblas-dev r-base-core libcurl4-openssl-dev libopenmpi-dev openmpi-bin openmpi-common openmpi-doc
 
-	mkdir /opt/fusioncatcher
-	cd /opt/fusioncatcher 
-	wget http://sf.net/projects/fusioncatcher/files/bootstrap.py -O bootstrap.py && python bootstrap.py -t -y
-	cd /opt/
-	
-	/opt/conda/bin/conda env create -f /environment.yml 
-	ln -s /bin/CMD/tsv.pm /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2
+        mkdir /opt/fusioncatcher
+        cd /opt/fusioncatcher
+        wget http://sf.net/projects/fusioncatcher/files/bootstrap.py -O bootstrap.py && python bootstrap.py -t -y
+        cd /opt/
 
-	#installing mongodb:
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm BSON::Regex JSON::MaybeXS BSON::Timestamp BSON::Bytes BSON BSON::OID BSON::Code BSON::Types BSON::Raw BSON::Decimal128 BSON::Time BSON::DBRef 
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  Config::AutoConf Path::Tiny --force
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  BSON::Regex BSON::Timestamp BSON::Bytes BSON BSON::OID BSON::Code BSON::Types BSON::Raw BSON::Decimal128 BSON::Time BSON::DBRef
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm MongoDB
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  MongoDB::BSON
-	#/opt/conda/envs/CMD-RNASEQFUS/bin/cpanm  MongoDB::OID
-
-
-
-
+	/opt/conda/bin/conda env create -f /environment.yml
+        ln -s /bin/CMD/tsv.pm /opt/conda/envs/CMD-RNASEQFUS/lib/site_perl/5.26.2
 	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
-	ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
-	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/trimmomatic-0.39-1/trimmomatic.jar /usr/share/java/trimmomatic.jar
-    
-	####Fuseq installation:
-	#mkdir /opt/fuseq
-	#cd /opt/fuseq
-	#wget https://github.com/nghiavtr/FuSeq/releases/download/v1.1.2/FuSeq_v1.1.2_linux_x86-64.tar.gz -O FuSeq_v1.1.2_linux_x86-64.tar.gz
-	#tar -xzvf FuSeq_v1.1.2_linux_x86-64.tar.gz
-	#cd FuSeq_v1.1.2_linux_x86-64
-	#bash configure.sh
-	#git clone https://github.com/nghiavtr/FuSeq.git
-	
-
-	/opt/conda/bin/conda clean -a	
-	
-	
-	
+        ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
+        ln -s /opt/conda/envs/CMD-RNASEQFUS/share/trimmomatic-0.39-1/trimmomatic.jar /usr/share/java/trimmomatic.jar
+	/opt/conda/bin/conda clean -a
