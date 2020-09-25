@@ -1,4 +1,3 @@
-
 read1=$1 
 read2=$2
 
@@ -16,8 +15,8 @@ awk -F"\t" '{print $1"\n"$3"\n"$5"\n"$7 > "read1_sub.fastq" ;print $2"\n"$4"\n"$
 gzip read1_sub.fastq
 gzip read2_sub.fastq
 else 
-mv read1.fastq > read1_sub.fastq
-mv read2.fastq > read2_sub.fastq 
+mv read1.fastq  read1_sub.fastq
+mv read2.fastq  read2_sub.fastq 
 gzip read1_sub.fastq
 gzip read2_sub.fastq   
 fi
