@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: nfcore/base:1.7
+From:nfcore/base:1.9
 
 %labels
 	MAINTAINER Sima Rahimi <sima.rahimi@skane.se>
@@ -19,15 +19,17 @@ From: nfcore/base:1.7
 	rm -rf /var/lib/apt/lists/*
         apt -y clean
         apt -y update
+	mkdir /usr/share/man/man1/
         apt -y install libz-dev build-essential gettext cmake libxml2-dev libcurl4-openssl-dev libssl-dev make libbz2-dev libkrb5-dev
-        apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python python-dev python-numpy python-biopython python-xlrd python-openpyx\
+        apt-get -y  install wget gawk gcc g++ make cmake automake curl unzip zip bzip2 tar gzip pigz parallel build-essential libncurses5-dev libc6-dev zlib1g zlib1g-dev libtbb-dev libtbb2 python2.7 python-dev python-numpy python-biopython python-xlrd python-openpyx\
 l nano
+	
 	apt-get -y install default-jdk
         apt-get install -y libopenblas-dev r-base-core libcurl4-openssl-dev libopenmpi-dev openmpi-bin openmpi-common openmpi-doc
 
         mkdir /opt/fusioncatcher
         cd /opt/fusioncatcher
-        wget http://sf.net/projects/fusioncatcher/files/bootstrap.py -O bootstrap.py && python bootstrap.py -t -y
+        wget http://sf.net/projects/fusioncatcher/files/bootstrap.py -O bootstrap.py && python2.7 bootstrap.py -t -y
         cd /opt/
 
 	/opt/conda/bin/conda env create -f /environment.yml
@@ -35,4 +37,6 @@ l nano
 	ln -s /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/docker/tools.groovy /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
         ln -s /data/bnf/dev/sima/rnaSeq_fus/data/hg_files/hg38/hg38.fa /opt/conda/envs/CMD-RNASEQFUS/share/jaffa-1.09-2/
         ln -s /opt/conda/envs/CMD-RNASEQFUS/share/trimmomatic-0.39-1/trimmomatic.jar /usr/share/java/trimmomatic.jar
+
+	
 	/opt/conda/bin/conda clean -a
