@@ -1,9 +1,16 @@
 #!/usr/bin/dev nextflow
 
-//OUTDIR = params.outdir+'/'+params.subdir
-OUTDIR = params.outdir
+OUTDIR = params.outdir+'/'+params.subdir
+
 
 csv = file(params.csv)
+// Print commit-version of active deployment
+file(params.git)
+    .readLines()
+   .each { println "git commit-hash: "+it }
+// Print active container
+container = file(params.container).toRealPath()
+println("container: "+container)
 
 workflow.onComplete {
 
@@ -59,9 +66,9 @@ if (!params.subsampling) {
 
 }else {
       process subsampling_fastqs {
-        //Downsample fastqs to 65000000. You can hange this  value in the subsampling.sh script located in ./bin
+        //Downsample fastqs to 65M redas.
 	memory 75.GB 
-
+	
 	input:
 		set val(smpl_id) , read1, read2 from reads_sub
 	output:
@@ -235,7 +242,7 @@ process provider{
 
 process star_fusion{
 	//errorStrategy 'ignore'
-	//scratch true
+	scratch true
 	tag "${smpl_id}"
 	cpus 18
 	memory  60.GB
@@ -272,8 +279,8 @@ process star_fusion{
 process fusioncatcher {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
-	cpus 20 
-	memory 90.GB
+	cpus 48 
+	memory 180.GB
 	scratch true
 
 
@@ -293,7 +300,7 @@ process fusioncatcher {
 	option = params.singleEnd ? read1 : "${read1},${read2}"
     	//def extra_params = params.fusioncatcher_opt ? "${params.fusioncatcher_opt}" : ''
     	"""
-   	fusioncatcher.py -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 5000000 --limitOutSJcollapsed 2000000 -o ./${smpl_id}.fusioncatcher
+   	fusioncatcher.py -d ${params.fusionCatcher_ref} -i ${option}  --threads ${task.cpus} --limitSjdbInsertNsj 50000000 --limitOutSJcollapsed 2000000 -o ./${smpl_id}.fusioncatcher
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
 	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.txt ${smpl_id}.final-list_candidate-fusion-genes.txt
     	"""
