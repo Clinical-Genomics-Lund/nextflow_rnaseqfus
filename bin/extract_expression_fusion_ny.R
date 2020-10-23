@@ -19,7 +19,7 @@ if(length(args)==0){
   
 }
 
-genes_of_intrest <- c("MECOM","PBX1","MN1","CD34","CD33","IL1RAP","IL3RA","CD14","MPO","GYPA","MPL","CD3G","CD3D","TRA","CD19","MS4A1","NCAM1")
+genes_of_intrest <- c("MECOM","PBX1","MN1","CD34","CD33","IL1RAP","IL3RA","CD14","MPO","GYPA","MPL","CD3G","CD3D","TRA","CD19","MS4A1","NCAM1","CRLF2")
 edb <- EnsDb.Hsapiens.v86
 gd<-transcripts(edb,return.type="DataFrame")
 
@@ -38,7 +38,7 @@ if(args[1]=="create-reference"){
 
   cat("Creating reference...")
    
-  files <- list.files(path="/fs1/results/rnaseq_fusion/quant/", pattern="*quant.sf$",full.names = T,include.dirs = F)  
+  files <- list.files(path="/fs1/results/rnaseq_fusion/quant/validationSamples_noSolid", pattern="*quant.sf$",full.names = T,include.dirs = F)  
   files<-files[!file.info(files)$isdir]
 
   allData <- tximport(files=files,type="salmon",txOut = F,tx2gene = gd[,c("tx_name","gene_id")])
