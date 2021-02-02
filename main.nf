@@ -4,13 +4,6 @@ OUTDIR = params.outdir+'/'+params.subdir
 
 
 csv = file(params.csv)
-// Print commit-version of active deployment
-file(params.git)
-    .readLines()
-   .each { println "git commit-hash: "+it }
-// Print active container
-container = file(params.container).toRealPath()
-println("container: "+container)
 
 workflow.onComplete {
 
@@ -38,6 +31,7 @@ workflow.onComplete {
 	logFile.append(error)
 }
 
+//Channel.fromPath( '/data/some/bigfile.txt' )
 
 Channel
     .fromPath(params.csv)
@@ -66,9 +60,11 @@ if (!params.subsampling) {
 
 }else {
       process subsampling_fastqs {
-        //Downsample fastqs to 65M redas.
+        //Downsample fastqs to 65000000. To change it shall be done in the subsampling.sh script located in bin directory
 	memory 75.GB 
-	
+	//when:
+	//params.subsampling
+
 	input:
 		set val(smpl_id) , read1, read2 from reads_sub
 	output:
