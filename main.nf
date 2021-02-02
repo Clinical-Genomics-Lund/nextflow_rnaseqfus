@@ -4,6 +4,13 @@ OUTDIR = params.outdir+'/'+params.subdir
 
 
 csv = file(params.csv)
+// Print commit-version of active deployment
+file(params.git)
+    .readLines()
+    .each { println "git commit-hash: "+it }
+// Print active container
+container = file(params.container).toRealPath()
+println("container: "+container)
 
 workflow.onComplete {
 
@@ -30,8 +37,6 @@ workflow.onComplete {
 	logFile.text = msg
 	logFile.append(error)
 }
-
-//Channel.fromPath( '/data/some/bigfile.txt' )
 
 Channel
     .fromPath(params.csv)
