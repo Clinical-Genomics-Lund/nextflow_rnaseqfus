@@ -1,4 +1,4 @@
 # nextflow_rnaseqfus
-Fusion genes identification pipeline 
+Fusion genes identification pipeline.
 
-New RNA fusion pipeline @CMD. See documentatoion to see the functonality of the new pipelines. 
+DSL2 branch for the further refinements
