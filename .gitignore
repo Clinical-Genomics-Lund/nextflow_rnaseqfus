@@ -1,0 +1,9 @@
+*/*.sif
+.nextflow*
+work/
+data/
+results/
+testing/
+testing*
+*.pyc
+.prettierignore
