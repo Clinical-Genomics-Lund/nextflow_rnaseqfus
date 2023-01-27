@@ -43,7 +43,6 @@ Channel
     .splitCsv(header:true)
     .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }
     .into {reads_starfusion; reads_sub; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta; reads_arriba}
-//reads_arriba.view()
 
 Channel
 	.fromPath(params.csv)
@@ -57,7 +56,7 @@ Channel
 /**********************************/
 if (!params.subsampling) {
 
-   reads_fusioncatcher =Channel
+   reads_fusioncatcher = Channel
    .fromPath(params.csv)
    .splitCsv(header:true)
    .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }.view()
@@ -130,7 +129,7 @@ process index_bam {
 	"""
 	sambamba index --show-progress -t 8 ${bam}
 	"""	
-	}  
+}  
 
 process fastqscreen{ 
 
@@ -315,8 +314,10 @@ process arriba{
 	memory  120.GB
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 
+	container = '/fs1/saile/prj/container/arriba_2.3.0--haa8aa89_0.sif'
+
 	when: 
-		params.arriba || params.fusion 
+		params.arriba 
 
 	input:
 		set val(smpl_id) , file(read1), file(read2) from reads_arriba
@@ -325,7 +326,7 @@ process arriba{
 		set val(smpl_id),  path("${smpl_id}.combined.tsv") into final_list_arriba_ch
 
 	script:
-    	def prefix = "${smpl_id}" + "."
+    def prefix = "${smpl_id}" + "."
 
 	"""
 	STAR --runThreadN ${task.cpus} \\
@@ -339,7 +340,7 @@ process arriba{
         --outBAMcompression 0 \\
         --outFilterMultimapNmax 50 \\
         --peOverlapNbasesMin 10 \\ --alignSplicedMateMapLminOverLmate 0.5 \\
-	--alignSJstitchMismatchNmax 5 -1 5 5 \\
+		--alignSJstitchMismatchNmax 5 -1 5 5 \\
         --chimSegmentMin 10 \\
         --chimOutType WithinBAM HardClip \\
         --chimJunctionOverhangMin 10 \\
@@ -355,14 +356,13 @@ process arriba{
         -g ${params.genome_gtf} \\
         -o ${prefix}fusions.tsv \\
         -O ${prefix}fusions.discarded.tsv \\
-        -b ${params.blacklists} \\
+        -b ${params.blacklist} \\
         -k ${params.knownfusions}  \\
-        -p ${params.proteinDomains}
+        -p ${parans.proteinDomains}
 	
 	cat ${prefix}fusions.tsv ${prefix}fusions.discarded.tsv > ${smpl_id}.combined.tsv
 	"""
-}
-
+ }
 
 process jaffa{
 	tag "${smpl_id}"
@@ -388,7 +388,6 @@ process jaffa{
 	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
    	"""
 	}
-
 
 
 /*****************************************/
@@ -437,7 +436,7 @@ process create_expr_ref {
 	"""
 	extract_expression_fusion_ny.R create-reference
 	"""
-}
+	}
 
 process extract_expression {
 	

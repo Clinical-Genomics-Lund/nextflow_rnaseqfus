@@ -7,10 +7,10 @@ params {
   git="$baseDir/git.hash"
   container='/fs1/resources/containers/rnaseqfus_active.sif'  
   refbase = "/fs1/resources/ref/hg38/data"
-  outdir = "/fs1/results/"
-  subdir = "rnaseq_fusion"
+  outdir = "/fs1/results_dev/"
+  subdir = "rnaseq_fusion_dev"
   tmp_dir = "/local/scratch/"
-  crondir = "/fs1/results/cron/"
+  crondir = "/fs1/results_dev/cron/"
   
   genome_fasta = "${refbase}/hg_files/Homo_sapiens.GRCh38.dna.primary_assembly.fa" //fasta file from ensembl
   genome_gtf = "${refbase}/hg_files/gtf/Homo_sapiens.GRCh38.98.gtf" //fasta file from ensembl
@@ -83,7 +83,7 @@ params {
 
 process {
   withName:star_fusion { container = "/fs1/resources/containers/star-fusion.v1.8.1.simg" }
-  withName:arriba {container = "/fs1/saile/prj/container/arriba_2.3.0--haa8aa89_0.sif"}
+  withName:arriba {container = "fs1/saile/prj/container/arriba_2.3.0--haa8aa89_0.sif"}
   // executor='slurm'
   // queue='highest'
   // time=96.h
