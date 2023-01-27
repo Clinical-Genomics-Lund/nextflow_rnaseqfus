@@ -42,15 +42,14 @@ Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
     .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }
-    .into {reads_starfusion; reads_sub; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta}
+    .into {reads_starfusion; reads_sub; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta; reads_arriba}
+//reads_arriba.view()
 
 Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
 	.map{row -> tuple(row.id,row.clarity_sample_id, row.clarity_pool_id)}
 	.into{coyote_meta;cdm_meta}
-
-
 
 
 /***********************************/
@@ -131,7 +130,7 @@ process index_bam {
 	"""
 	sambamba index --show-progress -t 8 ${bam}
 	"""	
-}  
+	}  
 
 process fastqscreen{ 
 
@@ -307,6 +306,62 @@ process fusioncatcher {
     	"""
 	}
 
+
+process arriba{
+	//errorStrategy 'ignore'
+	scratch true
+	tag "${smpl_id}"
+	cpus 50
+	memory  120.GB
+	publishDir "$OUTDIR/fusion", mode: 'copy'
+
+	when: 
+		params.arriba || params.fusion 
+
+	input:
+		set val(smpl_id) , file(read1), file(read2) from reads_arriba
+	
+	output:
+		set val(smpl_id),  path("${smpl_id}.combined.tsv") into final_list_arriba_ch
+
+	script:
+    	def prefix = "${smpl_id}" + "."
+
+	"""
+	STAR --runThreadN ${task.cpus} \\
+        --genomeDir  ${params.ref_genome_dir} \\
+        --genomeLoad NoSharedMemory \\
+        --readFilesIn ${read1} ${read2} \\
+        --readFilesCommand zcat  \\
+        --outFileNamePrefix ${prefix} \\
+        --outSAMtype BAM Unsorted \\
+        --outSAMunmapped Within \\
+        --outBAMcompression 0 \\
+        --outFilterMultimapNmax 50 \\
+        --peOverlapNbasesMin 10 \\ --alignSplicedMateMapLminOverLmate 0.5 \\
+	--alignSJstitchMismatchNmax 5 -1 5 5 \\
+        --chimSegmentMin 10 \\
+        --chimOutType WithinBAM HardClip \\
+        --chimJunctionOverhangMin 10 \\
+        --chimScoreDropMax 30 \\
+        --chimScoreJunctionNonGTAG 0 \\
+        --chimScoreSeparation 1 \\
+        --chimSegmentReadGapMax 3 \\
+        --chimMultimapNmax 50
+	
+	arriba \\
+        -x ${smpl_id}.Aligned.sortedByCoord.out.bam \\
+        -a ${params.genome_fasta} \\
+        -g ${params.genome_gtf} \\
+        -o ${prefix}fusions.tsv \\
+        -O ${prefix}fusions.discarded.tsv \\
+        -b ${params.blacklists} \\
+        -k ${params.knownfusions}  \\
+        -p ${params.proteinDomains}
+	
+	cat ${prefix}fusions.tsv ${prefix}fusions.discarded.tsv > ${smpl_id}.combined.tsv
+	"""
+}
 
 
 process jaffa{
