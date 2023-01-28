@@ -314,8 +314,6 @@ process arriba{
 	memory  120.GB
 	publishDir "$OUTDIR/fusion", mode: 'copy'
 
-	container = '/fs1/saile/prj/container/arriba_2.3.0--haa8aa89_0.sif'
-
 	when: 
 		params.arriba 
 
@@ -323,14 +321,15 @@ process arriba{
 		set val(smpl_id) , file(read1), file(read2) from reads_arriba
 	
 	output:
-		set val(smpl_id),  path("${smpl_id}.combined.tsv") into final_list_arriba_ch
+		set val(smpl_id),  path("${smpl_id}.combined.tsv") into prelim_list_arriba_ch
+		set val(smpl_id), path ("${smpl_id}.Aligned.out.bam") into bam_arriba_ch
 
 	script:
     def prefix = "${smpl_id}" + "."
 
 	"""
 	STAR --runThreadN ${task.cpus} \\
-        --genomeDir  ${params.ref_genome_dir} \\
+        --genomeDir  ${params.arriba_ref_genome_dir} \\
         --genomeLoad NoSharedMemory \\
         --readFilesIn ${read1} ${read2} \\
         --readFilesCommand zcat  \\
@@ -338,9 +337,8 @@ process arriba{
         --outSAMtype BAM Unsorted \\
         --outSAMunmapped Within \\
         --outBAMcompression 0 \\
-        --outFilterMultimapNmax 50 \\
-        --peOverlapNbasesMin 10 \\ --alignSplicedMateMapLminOverLmate 0.5 \\
-		--alignSJstitchMismatchNmax 5 -1 5 5 \\
+        --outFilterMultimapNmax 200 --peOverlapNbasesMin 10 --alignSplicedMateMapLminOverLmate 0.5 \\
+	--alignSJstitchMismatchNmax 5 -1 5 5 \\
         --chimSegmentMin 10 \\
         --chimOutType WithinBAM HardClip \\
         --chimJunctionOverhangMin 10 \\
@@ -351,18 +349,95 @@ process arriba{
         --chimMultimapNmax 50
 	
 	arriba \\
-        -x ${smpl_id}.Aligned.sortedByCoord.out.bam \\
+        -x ${smpl_id}.Aligned.out.bam \\
         -a ${params.genome_fasta} \\
         -g ${params.genome_gtf} \\
         -o ${prefix}fusions.tsv \\
         -O ${prefix}fusions.discarded.tsv \\
         -b ${params.blacklist} \\
         -k ${params.knownfusions}  \\
-        -p ${parans.proteinDomains}
+        -p ${params.proteinDomains}
 	
 	cat ${prefix}fusions.tsv ${prefix}fusions.discarded.tsv > ${smpl_id}.combined.tsv
 	"""
  }
+
+
+process arribaFilter {
+	// Filter the fusion variants identified based on the gene list provided and proritized variants annonated in the functional events.
+	// to create the fusion specific to  the ALL there is a gene list that is selected as fusion.panel.selected.AL and which is sorted to give as  sorted.gene.fusion.panel.AL Finally the list is given as grep -f sorted.gene.fusion.panel.AL  fusion.panel.AL > genefusion.panel.AL
+	
+when: 
+	params.arriba 
+
+input:
+	set val(smpl_id),  path(tsv) from prelim_list_arriba_ch
+
+output:
+	set val(smpl_id),  path("${smpl_id}_arriba_fusions.tsv") into final_list_arriba_ch, fusion_vis_arriba_ch
+
+
+script:
+
+"""
+head -n 1 ${smpl_id}.combined.tsv > header.txt
+filterFusionGene.py --g ${params.genefusion.panel.AL} --f ${tsv}
+uniq Selected.fusion.tsv > uniq_fusion.tsv
+cat header.txt uniq_fusion.tsv > ${smpl_id}_arriba_fusions.tsv
+"""
+}
+
+process arribaBamSort {
+	errorStrategy 'ignore'
+	tag "${smpl_id}"
+	cpus = 16
+	memory 40.GB
+	
+	when: 
+		params.arriba 
+
+	input:
+		set val(smpl_id), path (bam) from bam_arriba_ch
+		
+	output:
+		set val(smpl_id), path("${smpl_id}.sorted.bam"), path("${smpl_id}.sorted.bam.bai") into sort_arriba_ch
+
+	script:
+	def prefix = "${smpl_id}" + ".sorted"
+	"""
+	samtools sort -@ ${task.cpus-1} -o ${prefix}.bam -T $smpl_id $bam
+	samtools index -@ ${task.cpus-1} ${prefix}.bam 
+	"""
+}
+
+process arribaVis {
+	errorStrategy 'ignore'
+	tag "${smpl_id}"
+	cpus = 30
+	memory 60.GB
+
+	when: 
+		params.arriba 
+	
+	input:
+		set val(smpl_id), path (bam), path(bai), path (fusion) from sort_arriba_ch.join(fusion_vis_arriba_ch)
+
+	output:
+		set val(smpl_id), path ("${smpl_id}.pdf") into arriba_output
+
+	script:
+
+	"""
+	draw_fusions.R \\
+        --fusions=$fusion \\
+        --alignments=$bam \\
+        --output=${smpl_id}.pdf \\
+        --annotation=${params.genome_gtf} \\
+        --cytobands=${params.cytobands} \\
+        --proteinDomains=${params.proteinDomains}
+	"""
+}
+
 
 process jaffa{
 	tag "${smpl_id}"
@@ -511,7 +586,7 @@ process aggregate_fusion{
 	     params.combine
 
 	input:
-		set val(smpl_id), file(fusionCatcher_file), file(starFusion_file) from final_list_fusionCatcher_agg_ch.join(star_fusion_agg_ch)
+		set val(smpl_id), file(fusionCatcher_file), file(starFusion_file), path(arriba_file) from final_list_fusionCatcher_agg_ch.join(star_fusion_agg_ch.join(final_list_arriba_ch))
 		//set val(smpl_id), file(fusionCatcher_file), file(starFusion_file), file(fusionJaffa_file) from final_list_fusionCatcher_agg_ch.join(star_fusion_agg_ch.join(jaffa_csv_ch)).view()
 		
 
@@ -524,7 +599,8 @@ process aggregate_fusion{
 	aggregate_fusions.pl \\
 		--fusioncatcher ${fusionCatcher_file} \\
 		--starfusion ${starFusion_file} \\
-		--priority fusioncatcher,starfusion > ${smpl_id}.agg.vcf
+		--arriba ${arriba_file}
+		--priority fusioncatcher,starfusion,arriba > ${smpl_id}.agg.vcf
 	"""
 	}
 
@@ -576,3 +652,6 @@ process  register_to_cdm{
 
 }
 
+
+
+// nextflow run main.nf -c ./configs/nextflow.hopper.config  --csv 11051-21-verKF_rnaseq-fusion.csv -with-singularity /fs1/resources/containers/rnaseqfus_active.sif

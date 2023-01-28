@@ -8,7 +8,7 @@ params {
   container='/fs1/resources/containers/rnaseqfus_active.sif'  
   refbase = "/fs1/resources/ref/hg38/data"
   outdir = "/fs1/results_dev/"
-  subdir = "rnaseq_fusion_dev"
+  subdir = "rnaseq_fusion"
   tmp_dir = "/local/scratch/"
   crondir = "/fs1/results_dev/cron/"
   
@@ -24,10 +24,11 @@ params {
   fusionCatcher_ref= "${refbase}/fusioncatcher/human_v98/"
 
   // arriba
-  blacklists = "/fs1/saile/prj/runarriba/blacklist_hg38_GRCh38_v2.3.0.tsv.gz"
+  arriba_ref_genome_dir = '/fs1/pipelines/paul_test/RareDisease_RNA_workflow/star_hg38_nochr_index/'
+  blacklist = "/fs1/saile/prj/runarriba/blacklist_hg38_GRCh38_v2.3.0.tsv.gz"
   knownfusions = "/fs1/saile/prj/runarriba/known_fusions_hg38_GRCh38_v2.3.0.tsv.gz"
   proteinDomains = "/fs1/saile/prj/runarriba/protein_domains_hg38_GRCh38_v2.3.0.gff3"
-
+  genefusion.panel.AL = "/fs1/saile/prj/resources/rnafus/genefusion.panel.AL"
 
   //Provider files
   ref_bed = "${refbase}/provider/HPA_1000G_final_38.bed"
@@ -65,7 +66,6 @@ params {
   jaffa = false
   arriba = true
 
-  
   // Reads quantification tool 
   quant = true
 
@@ -83,12 +83,12 @@ params {
 
 process {
   withName:star_fusion { container = "/fs1/resources/containers/star-fusion.v1.8.1.simg" }
-  withName:arriba {container = "fs1/saile/prj/container/arriba_2.3.0--haa8aa89_0.sif"}
-  // executor='slurm'
-  // queue='highest'
-  // time=96.h
+  withName:arriba {container = "/fs1/saile/prj/container/arriba_2.3.0--haa8aa89_0.sif"}
+  executor='slurm'
+  queue='highest'
+  time=96.h
   
-    }
+  }
 
 
 
