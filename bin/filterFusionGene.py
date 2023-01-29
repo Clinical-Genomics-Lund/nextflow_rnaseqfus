@@ -27,7 +27,12 @@ def PrintFusion(gene1,gene2,annotation1,annotation2,line,fusion_dict,file,confid
     Checks for the genes pairs and annotations which are not in intronic regions. Prints selected line in new file.
     """
     try:
-        if confidence == 'high' or 'medium':
+        if confidence == 'high' and annotation1 != "intron" and annotation2 != "intron":
+            print (gene1,gene2)
+            file.write(line)
+
+        if confidence == 'medium' and annotation1 != "intron" and annotation2 != "intron":
+            print (gene1,gene2)
             file.write(line)
 
         if gene1 in fusion_dict.keys() and confidence == 'low':
