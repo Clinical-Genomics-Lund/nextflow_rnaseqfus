@@ -50,10 +50,10 @@ Channel
 	.map{row -> tuple(row.id,row.clarity_sample_id, row.clarity_pool_id)}
 	.into{coyote_meta;cdm_meta}
 
-
 /***********************************/
 /*      Part1: Alignment & QC     */
 /**********************************/
+
 if (!params.subsampling) {
 
    reads_fusioncatcher = Channel
@@ -61,7 +61,7 @@ if (!params.subsampling) {
    .splitCsv(header:true)
    .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }.view()
 
-}else {
+} else {
       process subsampling_fastqs {
         //Downsample fastqs to 65000000. To change it shall be done in the subsampling.sh script located in bin directory
 	memory 75.GB 
@@ -81,7 +81,6 @@ if (!params.subsampling) {
 	"""
 	}
 }
-
 process star_alignment{
 
 	errorStrategy 'ignore'
@@ -114,8 +113,7 @@ process star_alignment{
 	mv Aligned.sortedByCoord.out.bam  ${smpl_id}.Aligned.sortedByCoord.out.bam
 	mv Log.final.out ${smpl_id}.Log.final.out
 	"""	
-	}
-	
+}
 process index_bam {
 
 	publishDir "$OUTDIR/bam", mode :'copy'
@@ -130,7 +128,6 @@ process index_bam {
 	sambamba index --show-progress -t 8 ${bam}
 	"""	
 }  
-
 process fastqscreen{ 
 
 	errorStrategy 'ignore'
@@ -154,8 +151,7 @@ process fastqscreen{
 	"""
 	fastq_screen --conf ${params.genome_conf} --aligner bowtie2 --force ${read1} ${read2}
 	"""
-	}
-
+}
 process qualimap{
 
 	tag  "${smpl_id}"
@@ -178,8 +174,7 @@ process qualimap{
 	export JAVA_OPTS='-Djava.io.tmpdir=${params.tmp_dir}'
 	qualimap --java-mem-size=18G rnaseq -bam ${bam_f} -gtf ${params.genome_gtf} -pe -outdir ${smpl_id}.qualimap
 	"""
-	}
-	
+}	
 process rseqc_genebody_coverage{
 	tag "${smpl_id}"
 	publishDir "$OUTDIR/qc", mode:'copy'
@@ -207,8 +202,7 @@ process rseqc_genebody_coverage{
 	sambamba index --show-progress -t 8 ${smpl_id}.subsample.bam
 	geneBody_coverage.py -i ${smpl_id}.subsample.bam -r ${params.ref_rseqc_bed} -o ${smpl_id}
 	"""
-	}
-
+}
 process provider{
 
 	tag "${smpl_id}"
@@ -231,10 +225,8 @@ process provider{
 	"""
 	provider.pl  --out ${prefix} --bed ${params.ref_bed} --bam ${bam_f} --bedxy ${params.ref_bedXy}
 	"""
-	}
-	
-	
-	
+}
+
 /* ******************************** */	
 /* Part2 : fusion identification    */
 /* ******************************** */
@@ -272,9 +264,7 @@ process star_fusion{
 		
 	mv  star-fusion.fusion_predictions.tsv ${smpl_id}.star-fusion.fusion_predictions.tsv 
     	"""
-	}
-
-
+}
 process fusioncatcher {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
@@ -303,16 +293,14 @@ process fusioncatcher {
 	filter_aml_fusions.pl ./${smpl_id}.fusioncatcher > ${smpl_id}.fusioncatcher.xls
 	mv  ./${smpl_id}.fusioncatcher/final-list_candidate-fusion-genes.txt ${smpl_id}.final-list_candidate-fusion-genes.txt
     	"""
-	}
-
-
+}
 process arriba{
 	//errorStrategy 'ignore'
 	scratch true
 	tag "${smpl_id}"
 	cpus 50
 	memory  120.GB
-	publishDir "$OUTDIR/fusion", mode: 'copy'
+
 
 	when: 
 		params.arriba 
@@ -360,33 +348,34 @@ process arriba{
 	
 	cat ${prefix}fusions.tsv ${prefix}fusions.discarded.tsv > ${smpl_id}.combined.tsv
 	"""
- }
-
-
+}
 process arribaFilter {
 	// Filter the fusion variants identified based on the gene list provided and proritized variants annonated in the functional events.
 	// to create the fusion specific to  the ALL there is a gene list that is selected as fusion.panel.selected.AL and which is sorted to give as  sorted.gene.fusion.panel.AL Finally the list is given as grep -f sorted.gene.fusion.panel.AL  fusion.panel.AL > genefusion.panel.AL
-	
-when: 
-	params.arriba 
 
-input:
-	set val(smpl_id),  path(tsv) from prelim_list_arriba_ch
+	// At this current version, remeber that the fusion that are in either high confidence or medium confidence from arriba are directly ouputted and drawn using the arribaDraw script. Only the filter is applied to the fusion that are low confidence and only restricted to the ones that the present in both genes. Yes this is a strict module but the rationale here in is there is potentially loads of false positive and we would like only few for the intrepreation for decreasing the search space
 
-output:
-	set val(smpl_id),  path("${smpl_id}_arriba_fusions.tsv") into final_list_arriba_ch, fusion_vis_arriba_ch
+	publishDir "$OUTDIR/fusion", mode: 'copy'	
+
+	when: 
+		params.arriba 
+
+	input:
+		set val(smpl_id),  path(tsv) from prelim_list_arriba_ch
+
+	output:
+		set val(smpl_id),  path("${smpl_id}_arriba_fusions.tsv") into final_list_arriba_ch, fusion_vis_arriba_ch
 
 
-script:
+	script:
 
-"""
-head -n 1 ${smpl_id}.combined.tsv > header.txt
-filterFusionGene.py --g ${params.genefusion.panel.AL} --f ${tsv}
-uniq Selected.fusion.tsv > uniq_fusion.tsv
-cat header.txt uniq_fusion.tsv > ${smpl_id}_arriba_fusions.tsv
-"""
+	"""
+	head -n 1 ${smpl_id}.combined.tsv > header.txt
+	filterFusionGene.py --g ${params.genefusion.panel.AL} --f ${tsv}
+	uniq Selected.fusion.tsv > uniq_fusion.tsv
+	cat header.txt uniq_fusion.tsv > ${smpl_id}_arriba_fusions.tsv
+	"""
 }
-
 process arribaBamSort {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
@@ -409,7 +398,6 @@ process arribaBamSort {
 	samtools index -@ ${task.cpus-1} ${prefix}.bam 
 	"""
 }
-
 process arribaVis {
 	errorStrategy 'ignore'
 	tag "${smpl_id}"
@@ -437,8 +425,6 @@ process arribaVis {
         --proteinDomains=${params.proteinDomains}
 	"""
 }
-
-
 process jaffa{
 	tag "${smpl_id}"
 	errorStrategy 'ignore'
@@ -462,8 +448,7 @@ process jaffa{
    	bpipe run -m 75GB -n ${task.cpus} -p genome=hg38 -p refBase="${params.jaffa_base}" ${params.jaffa_file}  ${read1} ${read2}
 	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
    	"""
-	}
-
+}
 
 /*****************************************/
 /*  Part3 : Expression quantification    */
@@ -497,8 +482,7 @@ process salmon{
 	
 	"""
 
-	}
-
+}
 process create_expr_ref {
 
 	publishDir "${params.refbase}/extract_expr_ref", mode:'copy'
@@ -511,8 +495,7 @@ process create_expr_ref {
 	"""
 	extract_expression_fusion_ny.R create-reference
 	"""
-	}
-
+}
 process extract_expression {
 	
 	errorStrategy 'ignore'
@@ -536,8 +519,7 @@ process extract_expression {
 	fusion_classifier_report_ny.R  ${smpl_id} ${quants} ${params.hem_classifier_salmon} ${params.ensembl_annotation} ${smpl_id}.expr.classified
 	
 	"""
-	}
-
+}
 
 /***************************************************/
 /*          Part 4: Post processing                */
@@ -569,9 +551,7 @@ process postaln_qc_rna {
 		--flendist ${flendist} \\
 		--genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
 	"""
-	} 
-
-
+} 
 
 /***********************************************/
 /* Part 5 :  Prepare for and upload to Coyote  */
@@ -602,9 +582,7 @@ process aggregate_fusion{
 		--arriba ${arriba_file} \\
 		--priority fusioncatcher,starfusion,arriba > ${smpl_id}.agg.vcf
 	"""
-	}
-
-
+}
 // import files to coyote
 process import_to_coyote {
 	publishDir "${params.crondir}/coyote", mode: 'copy'
@@ -626,9 +604,7 @@ process import_to_coyote {
 	echo "import_fusion_to_coyote.pl --classification $OUTDIR/finalResults/${class_report} --fusions $OUTDIR/finalResults/${agg_vcf} --id ${id} --qc $OUTDIR/finalResults/${rnaseq_QC} --group ${group} --expr $OUTDIR/finalResults/${salmon_expr} --clarity-sample-id ${clarity_id} --clarity-pool-id ${pool_id}" > ${id}.coyote
 
 	"""
-	}
-
-
+}
 process  register_to_cdm{
 	 publishDir "${params.crondir}/qc", mode: 'copy', overwrite: true
 	 cpus 1
