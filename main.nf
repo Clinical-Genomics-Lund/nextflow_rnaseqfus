@@ -599,7 +599,7 @@ process aggregate_fusion{
 	aggregate_fusions.pl \\
 		--fusioncatcher ${fusionCatcher_file} \\
 		--starfusion ${starFusion_file} \\
-		--arriba ${arriba_file}
+		--arriba ${arriba_file} \\
 		--priority fusioncatcher,starfusion,arriba > ${smpl_id}.agg.vcf
 	"""
 	}
