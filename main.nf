@@ -552,7 +552,6 @@ process postaln_qc_rna {
 		--genebody ${geneCov}> '${smpl_id}.STAR.rnaseq_QC'
 	"""
 } 
-
 /***********************************************/
 /* Part 5 :  Prepare for and upload to Coyote  */
 /***********************************************/
