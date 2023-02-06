@@ -1,4 +1,5 @@
 site_name: Basic MkDocs Example Project
+site_url: https://github.com/Clinical-Genomics-Lund/nextflow_rnaseqfus.git
 theme:
   name: readthedocs
   highlightjs: true
