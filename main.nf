@@ -4,6 +4,8 @@ OUTDIR = params.outdir+'/'+params.subdir
 
 
 csv = file(params.csv)
+
+def genome_file = params.genome_file
 // Print commit-version of active deployment
 file(params.git)
     .readLines()
@@ -42,13 +44,13 @@ Channel
     .fromPath(params.csv)
     .splitCsv(header:true)
     .map{ row-> tuple(row.id, file(row.read1), file(row.read2)) }
-    .into {reads_starfusion; reads_sub; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta; reads_arriba}
+    .into {reads_starfusion; reads_sub; reads_jaffa; reads_align; reads_salmon; reads_fastqscreen; reads_meta; reads_arriba; reads_dux4; reads_dux4_ch2}
 
 Channel
 	.fromPath(params.csv)
 	.splitCsv(header:true)
 	.map{row -> tuple(row.id,row.clarity_sample_id, row.clarity_pool_id)}
-	.into{coyote_meta;cdm_meta}
+	.into{coyote_meta;cdm_meta; dux4_meta}
 
 /***********************************/
 /*      Part1: Alignment & QC     */
@@ -325,8 +327,9 @@ process arriba{
         --outSAMtype BAM Unsorted \\
         --outSAMunmapped Within \\
         --outBAMcompression 0 \\
-        --outFilterMultimapNmax 200 --peOverlapNbasesMin 10 --alignSplicedMateMapLminOverLmate 0.5 \\
-	--alignSJstitchMismatchNmax 5 -1 5 5 \\
+        --outFilterMultimapNmax 200 \\ 
+		--peOverlapNbasesMin 10 \\ --alignSplicedMateMapLminOverLmate 0.5 \\
+		--alignSJstitchMismatchNmax 5 -1 5 5 \\
         --chimSegmentMin 10 \\
         --chimOutType WithinBAM HardClip \\
         --chimJunctionOverhangMin 10 \\
@@ -448,6 +451,100 @@ process jaffa{
    	bpipe run -m 75GB -n ${task.cpus} -p genome=hg38 -p refBase="${params.jaffa_base}" ${params.jaffa_file}  ${read1} ${read2}
 	mv  jaffa_results.csv ${smpl_id}.jaffa_results.csv
    	"""
+}
+
+process dux4IghAlign{
+	scratch true
+	tag "${smpl_id}"
+	cpus 50
+	memory  120.GB	
+
+	when:
+		params.dux4Igh
+	
+	input:
+		set val(smpl_id) , file(read1), file(read2) from reads_dux4
+
+
+	output:
+		set val(smpl_id), path ("${smpl_id}.Aligned.sortedByCoord.out.bam") into dux4align_ch
+	
+	script:
+	def prefix = "${smpl_id}" + "."
+
+	"""
+    STAR  \\
+        --genomeDir ${params.ref_genome_dir} \\
+        --readFilesIn ${read1} ${read2} \\
+        --runThreadN ${task.cpus} \\
+        --outSAMtype BAM SortedByCoordinate \\
+        --readFilesCommand zcat  \\
+        --limitBAMsortRAM 10000000000 \\
+        --outFileNamePrefix ${prefix} \\
+        --outFilterMultimapNmax 200       
+    """ 
+}
+
+process dux4IghRealign {
+	tag "${smpl_id}"
+	cpus = 8
+	memory 20.GB
+	
+	when: 
+		params.dux4Igh
+	
+	input:
+		set val(smpl_id), path (bam), path(read1), path(read2), val(lims_id), val(pool_id) from dux4align_ch.join(reads_dux4_ch2.join(dux4_meta))
+
+	output:
+		set val(smpl_id),  path ("${lims_id}_IGHDUX4_RNAbwa_n200_hg38.bam"), path("${lims_id}_IGHDUX4_RNAbwa_n200_hg38.bam.bai") into dux4_detect_ch
+
+	script:
+	def prefix = "${smpl_id}" + "_IGHDUX4_reads_n200_grh38"
+	println (prefix)
+
+	"""
+	samtools index -@ ${task.cpus-1} ${bam} 
+	samtools view -L ${params.dux4Igh_bed} ${bam} | cut -f 1 | awk '!x[\$0]++' > ${prefix}.txt
+	
+	zcat ${read1} | grep -F -A3 -f ${prefix}.txt --no-group-separator | gzip -c > ${lims_id}_R1_001_ID_n200_grch38.fastq.gz &
+	zcat ${read2} | grep -F -A3 -f ${prefix}.txt --no-group-separator | gzip -c > ${lims_id}_R2_001_ID_n200_grch38.fastq.gz &
+	wait
+
+	bwa mem -M -R "@RG\\tID:IGHDUXreads_${lims_id}\\tSM:${lims_id}" \\
+    	-t ${task.cpus} \\
+    	${genome_file} \\
+    	${lims_id}_R1_001_ID_n200_grch38.fastq.gz \\
+    	${lims_id}_R2_001_ID_n200_grch38.fastq.gz \\
+    	2> bwa.log | samblaster 2> samblaster.log | samtools sort \\
+    	-@ 4  \\
+    	-m 20G \\
+    	-T bwa_dedup_temp \\
+    	-o ${lims_id}_IGHDUX4_RNAbwa_n200_hg38.bam -O bam -
+
+	samtools index ${lims_id}_IGHDUX4_RNAbwa_n200_hg38.bam
+	"""
+}
+
+process dux4IGhDetect {
+	tag "${smpl_id}"
+	cpus = 8
+	memory 20.GB
+		
+	when: 
+		params.dux4Igh
+
+	input:
+    	set val(sampleId), path(bam), path(bai) from dux4_detect_ch
+
+	output: 
+    	set val (sampleId), path("*.csv") into dux4_output
+
+	script:
+	"""
+	IGH_DUX4_breakpoints.pl -bam ${bam} -genome grch38 > ${sampleId}.csv 
+	"""
+	
 }
 
 /*****************************************/
