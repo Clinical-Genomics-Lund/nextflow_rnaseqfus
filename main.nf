@@ -489,7 +489,7 @@ process import_to_coyote {
 		file("${id}.coyote")
 	
 	script:
-		id= "${smpl_id}-fusions"
+		id= "${smpl_id}s"
 		group= 'fusion'
 	
 	"""
